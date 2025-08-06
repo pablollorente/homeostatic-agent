@@ -1,6 +1,5 @@
 import random
-import networks as net
-import torch
+
 
 class RandomPolicy(Policy):
     def __init__(self, input_dim, actions_dim):
@@ -14,5 +13,5 @@ class RandomPolicy(Policy):
     def predict_value(self, observation):
         return 0
 
-    def train(self):
+    def train(self, batch, training_config):
         return

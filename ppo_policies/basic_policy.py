@@ -1,21 +1,20 @@
 import networks as net
 import torch
 
-from torch.optim import Adam
+from networks import actor as Actor, critic as Critic, feed_forward as FeedForward
+
 
 class BasicPolicy(Policy):
-    def __init__(self, input_dim, actions_dim, training_config: TrainingConfig):
+    def __init__(self, input_dim, actions_dim):
         super(BasicPolicy, self).__init__()
 
-        self._actor_feedforward = net.FeedForward(input_dim, 64)
+        self._actor_feedforward = FeedForward(input_dim, 64)
 
-        self._critic_feedforward = net.FeedForward(input_dim, 64)
+        self._critic_feedforward = FeedForward(input_dim, 64)
 
-        self._actor = net.Actor(64, actions_dim)
+        self._actor = Actor(64, actions_dim)
 
-        self._actor_optimizer = 0
-
-        self._critic_optimizer = 0
+        self._critic = Critic(input_dim)
 
     def select_action(self, observation):
         with(torch.no_grad()):
@@ -31,28 +30,35 @@ class BasicPolicy(Policy):
 
         return value
 
-    def train(self, replay_buffer, training_config: TrainingConfig):
+    def train(self, batch, training_config: TrainingConfig):
 
-        critic_loss = F.mse_loss(values, batch['returns'])
+        actions, actions_log_probabilities, entropies = self._actor.forward(
+            batch['observation']
+        )
 
-        # Calcular ratios para la función de pérdida del actor
-        ratios = torch.exp(actions_log_probabilities - batch['actions_log_probabilities'])
+        values = self._critic.forward(batch['observation'])
 
-        # Calcular la pérdida con clipping y regularización con entropía del actor
-        actor_loss = ratios * batch['advantages']
-        actor_loss_clipped = torch.clamp(ratios, 1.0 - training_config.get_clip_epsilon(), 1.0 + training_config.get_clip_epsilon()) * batch['advantages']
-        actor_loss = -torch.min(actor_loss, actor_loss_clipped).mean()
-        actor_loss = actor_loss - training_config.get_entropy_coef * entropies.mean()
+        critic_loss = super()._get_critic_loss(values, returns)
 
-        self._actor_optimizer.zero_grad()
+        ratios =  super()._get_ratios(
+            actions_log_probabilities,
+            batch['actions_log_probabilities']
+        )
+
+        actor_loss = super()._get_actor_loss(ratios, batch['advantages'], training_config.get_clipping_eps())
+
+        actor_optimizer = training_config.get_actor_optimizer()
+        critic_optimizer = training_config.get_critic_optimizer()
+
+        actor_optimizer.zero_grad()
         actor_loss.backward()
         # TODO nn.utils.clip_grad_norm_(self._actor.parameters(), training_config.get_max_grad_norm())
-        self._actor_optimizer.step()
+        actor_optimizer.step()
 
-        self._critic_optimizer.zero_grad()
+        critic_optimizer.zero_grad()
         critic_loss.backward()
         # TODO nn.utils.clip_grad_norm_(self._critic.parameters(), training_config.get_max_grad_norm())
-        self._critic_optimizer.step()
+        critic_optimizer.step()
 
-        return
+        return actor_loss, critic_loss, entropies.mean()
 
