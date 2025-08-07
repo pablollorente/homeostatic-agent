@@ -1,14 +1,16 @@
 import gymnasium as gym
 import numpy as np
 import pygame
+
 from gymnasium import spaces
-from monster import *
+from interoception import Interoception
+from monster import Monster
 
 
 class SurvivalEnv(gym.Env):
     metadata = {"render_modes": ["human", "rgb_array"], "render_fps": 4}
 
-    def __init__(self, agent, render_mode=None):
+    def __init__(self, render_mode=None):
         super().__init__()
         assert render_mode is None or render_mode in self.metadata["render_modes"]
         self.render_mode = render_mode
@@ -19,9 +21,7 @@ class SurvivalEnv(gym.Env):
 
         self.observation_space = spaces.Dict({
             'board': spaces.Box(low=0, high=255, shape=(16, 16, 3), dtype=np.uint8),
-            'damage': spaces.Discrete(2),
-            'food': spaces.Discrete(2),
-            'medicine': spaces.Discrete(2)
+            'interoception': spaces.Box(low=0, high=1, shape=(2,), dtype=np.float32),
         })
 
         self.action_space = spaces.Discrete(5)
@@ -29,7 +29,7 @@ class SurvivalEnv(gym.Env):
         self._board = None
         self._agent_position = None
         self._monster = None
-        self._agent = agent
+        self._agent = Interoception([1,1])
 
     def _render_frame(self):
         if self.window is None and self.render_mode == "human":
@@ -177,12 +177,15 @@ class SurvivalEnv(gym.Env):
 
         observation = {
             'board': self._render_as_rgb_array(),
-            'damage': False,
-            'food': False,
-            'medicine': False
+            'interoception': self._agent.get_interoceptive_state()
         }
 
-        info = {}
+        info = {
+            'damage': False,
+            'food': False,
+            'medicine': False,
+            'distance_to_monster': self._get_agent_distance_to_monster()
+        }
 
         return observation, info
 
@@ -197,12 +200,15 @@ class SurvivalEnv(gym.Env):
         # Construir la observación
         observation = {
             'board': self._render_as_rgb_array(),
-            'damage': np.array_equal(self._agent_position, self._monster.get_position()),
-            'food': self._check_for_item_and_regenerate(new_position, 1),
-            'medicine': self._check_for_item_and_regenerate(new_position, 2)
+            'interoception': self._agent.get_interoceptive_state()
         }
 
-        info = {}
+        info = {
+            'damage': np.array_equal(self._agent_position, self._monster.get_position()),
+            'food': self._check_for_item_and_regenerate(new_position, 1),
+            'medicine': self._check_for_item_and_regenerate(new_position, 2),
+            'distance_to_monster': self._get_agent_distance_to_monster()
+        }
 
         return observation, None, False, False, info
 
@@ -235,25 +241,7 @@ class SurvivalEnv(gym.Env):
 
         return False
     
-    def get_agent_position(self):
-        """
-        Devuelve la posición actual del agente.
-        
-        Returns:
-            tuple: Posición del agente (fila, columna)
-        """
-        return tuple(self._agent_position)
-    
-    def get_monster_position(self):
-        """
-        Devuelve la posición actual del monstruo.
-        
-        Returns:
-            tuple: Posición del monstruo (fila, columna)
-        """
-        return tuple(self._monster.get_position())
-    
-    def get_agent_distance_to_monster(self):
+    def _get_agent_distance_to_monster(self):
         """
         Calcula la distancia Manhattan entre el agente y el monstruo.
         

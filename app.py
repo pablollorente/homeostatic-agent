@@ -1,18 +1,21 @@
 import argparse
+import ale_py
+import gymnasium as gym
+
+from agent import Agent
+from survival_env.survival_env import SurvivalEnv
 
 
 class App:
 
     def __init__(self):
-        self._args = None
-
-    def set_config(self):
         parser = argparse.ArgumentParser(
             description="Ejecutar el agente homeostático con imaginación en el entorno de supervivencia"
         )
         parser.add_argument(
             "--episodes",
-            type=int, default=100,
+            type=int,
+            default=100,
             help="Número de episodios"
         )
         parser.add_argument(
@@ -35,4 +38,34 @@ class App:
         self._args = parser.parse_args()
 
     def run(self):
-        return
+        gym.register_envs(ale_py)
+
+        env = SurvivalEnv()
+        agent = Agent()
+
+        #TODO set the rest of the args.
+
+        #TODO crear las clases para guardar las métricas y generar las gráficas.
+
+        episode_over = False
+        episode_duration = 0
+        total_reward = 0
+
+        for episode in range(0, self._args.episodes):
+            observation, info = env.reset()
+            agent.reset()
+
+            while not done:
+                action = agent.select_action(observation)
+
+                observation, reward, terminated, truncated, info = env.step(action)
+
+                total_reward += reward
+
+                #TODO hacer aquí el entrenamiento
+
+                done = terminated or truncated
+
+        episode_duration += 1
+
+        env.close()
