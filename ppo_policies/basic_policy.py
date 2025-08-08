@@ -1,10 +1,12 @@
 import networks as net
+import torch.optim as optim
 import torch
 
+from abstract_policy import AbstractPolicy
 from networks import actor as Actor, critic as Critic, feed_forward as FeedForward
 
 
-class BasicPolicy(Policy):
+class BasicPolicy(AbstractPolicy):
     def __init__(self, input_dim, actions_dim):
         super(BasicPolicy, self).__init__()
 
@@ -47,8 +49,15 @@ class BasicPolicy(Policy):
 
         actor_loss = super()._get_actor_loss(ratios, batch['advantages'], training_config.get_clipping_eps())
 
-        actor_optimizer = training_config.get_actor_optimizer()
-        critic_optimizer = training_config.get_critic_optimizer()
+        actor_optimizer = optim.Adam(
+            self._actor.parameters(),
+            lr=training_config.get_lr()
+        )
+
+        critic_optimizer = optim.Adam(
+            self._critic.parameters(),
+            lr=training_config.get_lr()
+        )
 
         actor_optimizer.zero_grad()
         actor_loss.backward()

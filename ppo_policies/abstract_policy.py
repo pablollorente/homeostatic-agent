@@ -26,8 +26,8 @@ class AbstractPolicy(ABC):
         """
         actor_loss = ratios * advantages
         actor_loss_clipped = torch.clamp(ratios, 1.0 - eps, 1.0 + eps) * advantages
-        actor_loss = -torch.min(actor_loss, actor_loss_clipped).mean()
-        actor_loss = actor_loss - training_config.get_entropy_coef * entropies.mean()
+        actor_loss = -torch.min(actor_loss, actor_loss_clipped)
+        actor_loss = actor_loss - training_config.get_entropy_coef * entropies
 
         return actor_loss
 

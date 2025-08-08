@@ -1,9 +1,14 @@
 import argparse
 import ale_py
 import gymnasium as gym
+import torch
 
 from agent import Agent
 from survival_env.survival_env import SurvivalEnv
+from survival_env.to_tensor import ObservationTranformer
+from ppo_policies.basic_policy import BasicPolicy
+from training_config import TrainingConfig
+from survival_env.env_transformer import EnvTranformer
 
 
 class App:
@@ -41,7 +46,12 @@ class App:
         gym.register_envs(ale_py)
 
         env = SurvivalEnv()
-        agent = Agent()
+
+        policy = BasicPolicy(256, 5)
+        training_config = TrainingConfig()
+        device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
+
+        agent = Agent(policy, training_config, device=device)
 
         #TODO set the rest of the args.
 
@@ -53,12 +63,15 @@ class App:
 
         for episode in range(0, self._args.episodes):
             observation, info = env.reset()
-            agent.reset()
+
+            tensor_observation, tensor_reward = EnvTranformer.to_tensor(observation, device=self._device)
 
             while not done:
-                action = agent.select_action(observation)
+                action = agent.select_action(tensor_observation)
 
                 observation, reward, terminated, truncated, info = env.step(action)
+
+                tensor_observation, tensor_reward = EnvTranformer.to_tensor(observation, reward, self._device)
 
                 total_reward += reward
 

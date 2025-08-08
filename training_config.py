@@ -2,23 +2,28 @@ class TrainingConfig:
 
     def __init__(
             self,
-            batch_size,
-            epochs,
-            actor_optimizer,
-            critic_optimizer,
-            clipping_eps,
-            entropy_coef,
-            gamma,
-            gae_lambda
+            replay_buffer_size = 2024,
+            batch_size = 64,
+            epochs = 10,
+            lr=1e-4,
+            max_grad_norm = 1.0,
+            clipping_eps = 0.2,
+            entropy_coef = 0.01,
+            gamma = 0.99,
+            gae_lambda = 0.95
     ):
+        self._replay_buffer_size = replay_buffer_size
         self._batch_size = batch_size
         self._epochs = epochs
-        self._actor_optimizer = actor_optimizer
-        self._critic_optimizer = critic_optimizer
+        self._lr = lr
+        self._max_grad_norm = max_grad_norm
         self._clipping_eps = clipping_eps
         self._entropy_coef = entropy_coef
         self._gamma = gamma
         self._gaed_lambda = gae_lambda
+
+    def get_replay_buffer_size(self):
+        return self._replay_buffer_size
 
     def get_batch_size(self):
         return self._batch_size
@@ -26,11 +31,11 @@ class TrainingConfig:
     def get_epochs(self):
         return self._epochs
 
-    def get_actor_optimizer(self):
-        return self._actor_optimizer
+    def get_lr(self):
+        return self._lr
 
-    def get_critic_optimizer(self):
-        return self._critic_optimizer
+    def get_max_grad_norm(self):
+        return self._max_grad_norm
 
     def get_clipping_eps(self):
         return self._clipping_eps
