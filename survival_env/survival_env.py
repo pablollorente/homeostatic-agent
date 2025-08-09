@@ -197,6 +197,24 @@ class SurvivalEnv(gym.Env):
         # Mover al monstruo
         self._monster.move(self._agent_position)
 
+        damage = np.array_equal(self._agent_position, self._monster.get_position())
+        food = self._check_for_item_and_regenerate(new_position, 1)
+        medicine = self._check_for_item_and_regenerate(new_position, 2)
+
+        if action == 0:
+            self._agent.add_energy(-0.01)
+        else:
+            self._agent.add_energy(-0.05)
+
+        if damage:
+            self._agent.add_energy(0.2)
+
+        if food:
+            self._agent.add_energy(1)
+
+        if medicine:
+            self._agent.set_integrity_to_max()
+
         # Construir la observación
         observation = {
             'board': self._render_as_rgb_array(),
@@ -204,9 +222,9 @@ class SurvivalEnv(gym.Env):
         }
 
         info = {
-            'damage': np.array_equal(self._agent_position, self._monster.get_position()),
-            'food': self._check_for_item_and_regenerate(new_position, 1),
-            'medicine': self._check_for_item_and_regenerate(new_position, 2),
+            'damage': damage,
+            'food': food,
+            'medicine': medicine,
             'distance_to_monster': self._get_agent_distance_to_monster()
         }
 
