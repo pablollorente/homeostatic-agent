@@ -3,8 +3,9 @@ import numpy as np
 import pygame
 
 from gymnasium import spaces
-from interoception import Interoception
-from monster import Monster
+from survival_env.interoception import Interoception
+from survival_env.monster import Monster
+from survival_env.reward_calculator import RewardCalculator
 
 
 class SurvivalEnv(gym.Env):
@@ -29,7 +30,8 @@ class SurvivalEnv(gym.Env):
         self._board = None
         self._agent_position = None
         self._monster = None
-        self._agent = Interoception([1,1])
+        self._agent = Interoception(np.array([1.0,1.0]))
+        self._reward_calculator = RewardCalculator()
 
     def _render_frame(self):
         if self.window is None and self.render_mode == "human":
@@ -175,6 +177,8 @@ class SurvivalEnv(gym.Env):
         initial_monster_position = empty_positions[self.np_random.choice(len(empty_positions))]
         self._monster = Monster(np.array(initial_monster_position, dtype=np.int8), 0.6)
 
+        self._agent = Interoception([1.0, 1.0])
+
         observation = {
             'board': self._render_as_rgb_array(),
             'interoception': self._agent.get_interoceptive_state()
@@ -201,19 +205,32 @@ class SurvivalEnv(gym.Env):
         food = self._check_for_item_and_regenerate(new_position, 1)
         medicine = self._check_for_item_and_regenerate(new_position, 2)
 
+        previous_interoception = self._agent.get_interoceptive_state().copy()
+
+        print(f"DEBUG -> Previous intero: {previous_interoception}")
+
         if action == 0:
             self._agent.add_energy(-0.01)
+            print(f"DEBUG -> Add energy basal: {self._agent.get_interoceptive_state()}")
         else:
             self._agent.add_energy(-0.05)
+            print(f"DEBUG -> Add energy action: {self._agent.get_interoceptive_state()}")
 
         if damage:
-            self._agent.add_energy(0.2)
+            self._agent.add_energy(-0.2)
+            print(f"DEBUG -> Damage: {self._agent.get_interoceptive_state()}")
 
         if food:
             self._agent.add_energy(1)
+            print(f"DEBUG -> Food: {self._agent.get_interoceptive_state()}")
 
         if medicine:
             self._agent.set_integrity_to_max()
+            print(f"DEBUG -> Medicine: {self._agent.get_interoceptive_state()}")
+
+        print(f"DEBUG -> After intero: {self._agent.get_interoceptive_state()}")
+
+        reward = self._reward_calculator.calculate_reward(previous_interoception, self._agent.get_interoceptive_state())
 
         # Construir la observación
         observation = {
@@ -228,7 +245,11 @@ class SurvivalEnv(gym.Env):
             'distance_to_monster': self._get_agent_distance_to_monster()
         }
 
-        return observation, None, False, False, info
+        # TODO introducir el cálculo de la recompensa aquí
+
+        print(f"DEBUG -> Is agent dead: {self._agent.is_dead()}")
+
+        return observation, reward, self._agent.is_dead(), False, info
 
     def _get_new_agent_position(self, action):
         new_position = list(self._agent_position).copy()

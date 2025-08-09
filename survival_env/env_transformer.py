@@ -22,6 +22,6 @@ class EnvTranformer:
             "interoception": interoception
         }
 
-        reward = torch.FloatTensor(reward).unsqueeze(0).to(device)
+        reward = torch.FloatTensor([reward]).unsqueeze(0).to(device)
 
         return observation, reward

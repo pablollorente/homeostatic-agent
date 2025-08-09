@@ -51,8 +51,7 @@ class PPO:
         return normalized_returns, normalized_advantages
 
     def select_action(self, observation):
-        self._policy.select_action(observation)
-        return
+        return self._policy.select_action(observation)
 
     def predict_value(self, observation):
         return self._policy.predict_value(observation)

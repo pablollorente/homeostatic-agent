@@ -2,8 +2,10 @@ import networks as net
 import torch.optim as optim
 import torch
 
-from abstract_policy import AbstractPolicy
-from networks import actor as Actor, critic as Critic, feed_forward as FeedForward
+from ppo_policies.abstract_policy import AbstractPolicy
+from networks.feed_forward import FeedForward
+from networks.actor import Actor
+from networks.critic import Critic
 
 
 class BasicPolicy(AbstractPolicy):
@@ -16,23 +18,33 @@ class BasicPolicy(AbstractPolicy):
 
         self._actor = Actor(64, actions_dim)
 
-        self._critic = Critic(input_dim)
+        self._critic = Critic(64)
+
+    def _format_observation(self, observation):
+        flattened_board = observation["board"].detach().clone()
+        flattened_board = torch.flatten(flattened_board, start_dim=1)
+
+        return torch.cat((flattened_board, observation["interoception"].detach().clone()),1)
 
     def select_action(self, observation):
+        input = self._format_observation(observation)
+
         with(torch.no_grad()):
-            x = self._actor_feedforward(observation)
+            x = self._actor_feedforward(input)
             action, action_log_probabilities, entropy = self._actor(x)
 
         return action, action_log_probabilities, entropy
 
     def predict_value(self, observation):
+        input = self._format_observation(observation)
+
         with(torch.no_grad()):
-            x = self._critic_feedforward(observation)
+            x = self._critic_feedforward(input)
             value = self._critic(x)
 
         return value
 
-    def train(self, batch, training_config: TrainingConfig):
+    def train(self, batch, training_config):
 
         actions, actions_log_probabilities, entropies = self._actor.forward(
             batch['observation']
