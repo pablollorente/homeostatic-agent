@@ -7,11 +7,11 @@ class TrainingConfig:
             n_batches = 32,
             batch_size = 64,
             epochs = 10,
-            train_per_steps = 100,
+            train_per_steps = 1000,
             lr=1e-4,
             max_grad_norm = 1.0,
             clipping_eps = 0.2,
-            entropy_coef = 0.01,
+            entropy_coef = 0.1,
             gamma = 0.99,
             gae_lambda = 0.95
     ):
@@ -61,5 +61,5 @@ class TrainingConfig:
     def get_gamma(self):
         return self._gamma
 
-    def get_gaed_lambda(self):
+    def get_gae_lambda(self):
         return self._gaed_lambda

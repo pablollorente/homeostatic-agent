@@ -207,28 +207,19 @@ class SurvivalEnv(gym.Env):
 
         previous_interoception = self._agent.get_interoceptive_state().copy()
 
-        print(f"DEBUG -> Previous intero: {previous_interoception}")
-
         if action == 0:
             self._agent.add_energy(-0.01)
-            print(f"DEBUG -> Add energy basal: {self._agent.get_interoceptive_state()}")
         else:
             self._agent.add_energy(-0.05)
-            print(f"DEBUG -> Add energy action: {self._agent.get_interoceptive_state()}")
 
         if damage:
             self._agent.add_energy(-0.2)
-            print(f"DEBUG -> Damage: {self._agent.get_interoceptive_state()}")
 
         if food:
             self._agent.add_energy(1)
-            print(f"DEBUG -> Food: {self._agent.get_interoceptive_state()}")
 
         if medicine:
             self._agent.set_integrity_to_max()
-            print(f"DEBUG -> Medicine: {self._agent.get_interoceptive_state()}")
-
-        print(f"DEBUG -> After intero: {self._agent.get_interoceptive_state()}")
 
         reward = self._reward_calculator.calculate_reward(previous_interoception, self._agent.get_interoceptive_state())
 
@@ -246,8 +237,6 @@ class SurvivalEnv(gym.Env):
         }
 
         # TODO introducir el cálculo de la recompensa aquí
-
-        print(f"DEBUG -> Is agent dead: {self._agent.is_dead()}")
 
         return observation, reward, self._agent.is_dead(), False, info
 

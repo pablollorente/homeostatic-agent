@@ -1,9 +1,10 @@
-class PPO:
-    def __init__(self, policy, training_config):
-        self._policy = policy
-        self._training_config = training_config
+import torch
 
-    def get_returns_and_advantages(self, rewards, values, dones):
+
+class PPOUtils:
+
+    @staticmethod
+    def get_returns_and_advantages(rewards, values, dones, gamma = 0.99, gae_lambda = 0.95):
         """
          Calcula los retornos y ventajas estandarizadas para PPO usando GAE.
 
@@ -13,9 +14,6 @@ class PPO:
          """
         returns = torch.zeros_like(rewards)
         advantages = torch.zeros_like(rewards)
-
-        gamma = self._training_config.get_gamma()
-        gae_lambda = self._training_config.get_gae_lambda()
 
         # Inicializar valores para último paso
         next_return = 0
@@ -33,11 +31,11 @@ class PPO:
                 next_advantage = 0
 
             # Calcular retorno
-            returns[step] = rewards[step] + gamma * next_return * (1 - dones[step])
+            returns[step] = rewards[step] + gamma * next_return * (1 - int(dones[step]))
 
             # Calcular ventaja usando GAE (Generalized Advantage Estimation)
-            delta = rewards[step] + gamma * next_value * (1 - dones[step]) - values[step]
-            advantages[step] = delta + gamma * gae_lambda * next_advantage * (1 - dones[step])
+            delta = rewards[step] + gamma * next_value * (1 - int(dones[step])) - values[step]
+            advantages[step] = delta + gamma * gae_lambda * next_advantage * (1 - int(dones[step]))
 
             # Actualizar para próxima iteración
             next_return = returns[step]
@@ -49,12 +47,3 @@ class PPO:
         normalized_advantages = (advantages - advantages.mean()) / (advantages.std() + 1e-8)
 
         return normalized_returns, normalized_advantages
-
-    def select_action(self, observation):
-        return self._policy.select_action(observation)
-
-    def predict_value(self, observation):
-        return self._policy.predict_value(observation)
-
-    def train(self, batch):
-        return self._policy.train(batch, self._training_config)

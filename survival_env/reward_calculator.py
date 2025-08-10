@@ -66,14 +66,10 @@ class RewardCalculator:
         Returns:
             reward: Recompensa homeostática
         """
-        print(f"DEBUG -> Prev intero: {previous_interoception} | Current intero: {current_interoception}")
         # Calcular reducción de distancia real
         real_reduction = self._get_distance_reduction(previous_interoception, current_interoception)
 
-        print(f"DEBUG -> Real homeo distance reduction: {real_reduction}")
-
         if predicted_interoception:
-            print(f"DEBUG -> With predicted interoception: {predicted_interoception}")
             # Calcular reducción de distancia imaginada
             predicted_reduction = self._get_distance_reduction(previous_interoception, predicted_interoception)
 
@@ -82,14 +78,8 @@ class RewardCalculator:
         else:
             delta = real_reduction
 
-        print(f"DEBUG -> Delta reward: {delta}")
-
         sign = np.sign(delta)
 
-        print(f"DEBUG -> Reward sign: {delta}")
-
         reward = sign * np.power(100, np.absolute(delta))
-
-        print(f"DEBUG -> Calculated reward: {reward}")
 
         return reward.item()

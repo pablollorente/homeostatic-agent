@@ -20,14 +20,14 @@ class BasicPolicy(AbstractPolicy):
 
         self._critic = Critic(64)
 
-    def _format_observation(self, observation):
-        flattened_board = observation["board"].detach().clone()
+    def _format_observation(self, board, interoception):
+        flattened_board = board.detach().clone()
         flattened_board = torch.flatten(flattened_board, start_dim=1)
 
-        return torch.cat((flattened_board, observation["interoception"].detach().clone()),1)
+        return torch.cat((flattened_board, interoception.detach().clone()),1)
 
     def select_action(self, observation):
-        input = self._format_observation(observation)
+        input = self._format_observation(observation["board"], observation["interoception"])
 
         with(torch.no_grad()):
             x = self._actor_feedforward(input)
@@ -36,7 +36,7 @@ class BasicPolicy(AbstractPolicy):
         return action, action_log_probabilities, entropy
 
     def predict_value(self, observation):
-        input = self._format_observation(observation)
+        input = self._format_observation(observation["board"], observation["interoception"])
 
         with(torch.no_grad()):
             x = self._critic_feedforward(input)
@@ -46,20 +46,30 @@ class BasicPolicy(AbstractPolicy):
 
     def train(self, batch, training_config):
 
-        actions, actions_log_probabilities, entropies = self._actor.forward(
-            batch['observation']
-        )
+        observation = self._format_observation(batch['board'], batch["interoception"])
 
-        values = self._critic.forward(batch['observation'])
+        actor_logits = self._actor_feedforward(observation)
 
-        critic_loss = super()._get_critic_loss(values, returns)
+        actions, actions_log_probabilities, entropies = self._actor.forward(actor_logits)
+
+        critic_logits = self._critic_feedforward(observation)
+
+        values = self._critic.forward(critic_logits)
+
+        critic_loss = super()._get_critic_loss(values, batch["return"])
 
         ratios =  super()._get_ratios(
             actions_log_probabilities,
-            batch['actions_log_probabilities']
+            batch['action_log_probabilities']
         )
 
-        actor_loss = super()._get_actor_loss(ratios, batch['advantages'], training_config.get_clipping_eps())
+        actor_loss = super()._get_actor_loss(
+            ratios,
+            batch['advantage'],
+            training_config.get_clipping_eps(),
+            training_config.get_entropy_coef(),
+            entropies
+        )
 
         actor_optimizer = optim.Adam(
             self._actor.parameters(),

@@ -20,17 +20,17 @@ class AbstractPolicy(ABC):
     def _get_ratios(self, new_actions_log_probabilities, old_actions_log_probabilities):
         return torch.exp(new_actions_log_probabilities - old_actions_log_probabilities)
 
-    def _get_actor_loss(self, ratios, advantages, eps):
+    def _get_actor_loss(self, ratios, advantages, eps, entropy_coef, entropies):
         """
         Computes clipped actor loss with entropy bonus per batch
         """
         actor_loss = ratios * advantages
         actor_loss_clipped = torch.clamp(ratios, 1.0 - eps, 1.0 + eps) * advantages
         actor_loss = -torch.min(actor_loss, actor_loss_clipped)
-        actor_loss = actor_loss - training_config.get_entropy_coef * entropies
+        actor_loss = actor_loss - entropy_coef * entropies
 
-        return actor_loss
+        return actor_loss.mean()
 
     def _get_critic_loss(self, values, returns):
-        return F.mse_loss(values, returns)
+        return F.mse_loss(values.view(-1), returns)
 
