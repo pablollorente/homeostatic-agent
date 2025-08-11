@@ -9,7 +9,7 @@ from ppo_policies.basic_policy import BasicPolicy
 from training_config import TrainingConfig
 from survival_env.env_transformer import EnvTranformer
 from ppo_utils import PPOUtils
-
+from experiment_logging.experiment_logger import ExperimentLogger
 # Data collection
 from tensordict import TensorDict
 from torchrl.data.replay_buffers import TensorDictReplayBuffer
@@ -48,12 +48,16 @@ class App:
 
         self._args = parser.parse_args()
 
+        self._logger = ExperimentLogger()
+
     def _run_training(self, agent, replay_buffer, training_config, training_count, device):
         print("###############################################")
         print(f"Comenzando el ciclo de entrenamiento {training_count}.")
         print("###############################################")
 
         print(f"Calculando los retornos y ventajas normalizadas para PPO.")
+
+        self._logger.log_training_start()
 
         start = time.time()
 
@@ -104,6 +108,8 @@ class App:
 
         print(f"Duración: {training_time}")
 
+        self._logger.log_training_end(actor_loss.item(), critic_loss.item(), entropy.item())
+
         # TODO guardar métricas del entrenamiento
 
     def run(self):
@@ -127,6 +133,8 @@ class App:
 
         step_count = 0
         training_count = 0
+
+        self._logger.log_experiment_start(self._args.episodes, "basic", training_config)
 
         for episode in range(0, self._args.episodes):
             done = False
@@ -179,19 +187,26 @@ class App:
                 medicine_count += info["medicine"]
                 damage_count += info["damage"]
                 total_distance_to_monster += info["distance_to_monster"]
-                mean_distance_to_monster = total_distance_to_monster / step_count
+
+            mean_distance_to_monster = total_distance_to_monster / step_count
+            mean_reward = total_reward / episode_duration
 
             print("################################")
             print(f"# Resumen del episodio {episode + 1}. #")
             print("################################")
             print(f"- Duración: {episode_duration} steps.")
             print(f"- Recompensa acumulada: {total_reward: .2f}.")
-            print(f"- Recompensa media: {total_reward / episode_duration:.2f}")
+            print(f"- Recompensa media: {mean_reward:.2f}")
             print(f"- Comida ingerida: {food_count}")
             print(f"- Medicinas tomadas: {medicine_count}")
             print(f"- Mordiscos del monstruo recibidos: {damage_count}")
             print(f"- Distancia media al monstruo: {mean_distance_to_monster:.2f}")
 
+            self._logger.log_episode(episode_duration, total_reward, mean_reward, food_count, medicine_count, damage_count, mean_distance_to_monster)
+
         # TODO guardar métricas del episodio
 
         env.close()
+
+        self._logger.log_experiment_end()
+        self._logger.save_to_json_file("experiments")
