@@ -8,6 +8,7 @@ import uuid
 class ExperimentLogger:
     def __init__(self):
         self._experiment_log = {
+            "id": str(uuid.uuid4()),
             "start_datetime": None,
             "end_datetime": None,
             "agent_type": None,
@@ -18,11 +19,11 @@ class ExperimentLogger:
         self._episode_log = {
             "duration": np.array([]),
             "cumulative_reward": np.array([]),
-            "mean_reward": np.array([]),
+            "avg_reward": np.array([]),
             "food_count": np.array([]),
             "medicine_count": np.array([]),
             "damage_count": np.array([]),
-            "mean_distance_to_monster": np.array([]),
+            "avg_distance_to_monster": np.array([]),
         }
 
         self._training_log = {
@@ -46,19 +47,19 @@ class ExperimentLogger:
         self,
         duration,
         cumulative_reward,
-        mean_reward,
+        avg_reward,
         food_count,
         medicine_count,
         damage_count,
-        mean_distance_to_monster
+        avg_distance_to_monster
     ):
         self._episode_log["duration"] = np.append(self._episode_log["duration"], duration)
         self._episode_log["cumulative_reward"] = np.append(self._episode_log["cumulative_reward"], cumulative_reward)
-        self._episode_log["mean_reward"] = np.append(self._episode_log["mean_reward"], mean_reward)
+        self._episode_log["avg_reward"] = np.append(self._episode_log["avg_reward"], avg_reward)
         self._episode_log["food_count"] = np.append(self._episode_log["food_count"], food_count)
         self._episode_log["medicine_count"] = np.append(self._episode_log["medicine_count"], medicine_count)
         self._episode_log["damage_count"] = np.append(self._episode_log["damage_count"], damage_count)
-        self._episode_log["mean_distance_to_monster"] = np.append(self._episode_log["mean_distance_to_monster"], mean_distance_to_monster)
+        self._episode_log["avg_distance_to_monster"] = np.append(self._episode_log["avg_distance_to_monster"], avg_distance_to_monster)
 
     def log_training_start(self):
         self._training_log["start_datetime"] = np.append(self._training_log["start_datetime"], time.strftime("%Y-%M-%d %H:%M:%S", time.localtime()))
@@ -69,7 +70,7 @@ class ExperimentLogger:
         self._training_log["entropy"] = np.append(self._training_log["entropy"], entropy)
         self._training_log["end_datetime"] = np.append(self._training_log["end_datetime"], time.strftime("%Y-%M-%d %H:%M:%S", time.localtime()))
 
-    def save_to_json_file(self, path):
+    def save_to_json_file(self, path = "experiments/logs"):
         log = {
             "experiment": self._experiment_log,
             "episodes": [],
@@ -82,11 +83,11 @@ class ExperimentLogger:
                 "number": index,
                 "duration": self._episode_log["duration"][index],
                 "cumulative_reward": self._episode_log["cumulative_reward"][index],
-                "mean_reward": self._episode_log["mean_reward"][index],
+                "avg_reward": self._episode_log["avg_reward"][index],
                 "food_count": self._episode_log["food_count"][index],
                 "medicine_count": self._episode_log["medicine_count"][index],
                 "damage_count": self._episode_log["damage_count"][index],
-                "mean_distance_to_monster": self._episode_log["mean_distance_to_monster"][index],
+                "avg_distance_to_monster": self._episode_log["avg_distance_to_monster"][index],
             }
 
             log["episodes"].append(episode)
@@ -106,17 +107,18 @@ class ExperimentLogger:
         filename = (f"{time.strftime('%Y%M%d_%H%M%S', self._experiment_log['start_datetime'])}"
                     f"_experiment_{self._experiment_log['agent_type']}"
                     f"_{str(self._experiment_log['episodes'])}"
-                    f"_{str(uuid.uuid4())}.json"
+                    f"_{self._experiment_log['id']}.json"
         )
+
+        os.makedirs(path, exist_ok=True)
 
         filepath = os.path.join(path, filename)
 
-        self._experiment_log["start_datetime"] = time.strftime('%Y-%M-%d %H:%M:%S', self._experiment_log['start_datetime'])
+        self._experiment_log["start_datetime"] = time.strftime("%Y-%M-%d %H:%M:%S", self._experiment_log["start_datetime"])
 
-        with open(filepath, 'w', encoding='utf-8') as file:
+        with open(filepath, "w", encoding="utf-8") as file:
             json.dump(log, file, indent=4, ensure_ascii=False)
 
-    # TODO add methods to print and save de plots
-    def generate_plots(self):
-        return
+    def get_log(self):
+        return self._experiment_log, self._episode_log, self._training_log
 

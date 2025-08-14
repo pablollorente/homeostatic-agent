@@ -10,6 +10,7 @@ from training_config import TrainingConfig
 from survival_env.env_transformer import EnvTranformer
 from ppo_utils import PPOUtils
 from experiment_logging.experiment_logger import ExperimentLogger
+from experiment_logging.experiment_plotter import ExperimentPlotter
 # Data collection
 from tensordict import TensorDict
 from torchrl.data.replay_buffers import TensorDictReplayBuffer
@@ -49,6 +50,7 @@ class App:
         self._args = parser.parse_args()
 
         self._logger = ExperimentLogger()
+        self._plotter = ExperimentPlotter(self._logger)
 
     def _run_training(self, agent, replay_buffer, training_config, training_count, device):
         print("###############################################")
@@ -209,4 +211,5 @@ class App:
         env.close()
 
         self._logger.log_experiment_end()
-        self._logger.save_to_json_file("experiments")
+        self._logger.save_to_json_file()
+        self._plotter.plot_all()
