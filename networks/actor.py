@@ -29,4 +29,4 @@ class Actor(nn.Module):
         #Obtenemos la entropía de la distribución para añadir una compensación entre explotación y exploración en la función de pérdida
         entropy = distribution.entropy()
 
-        return action, action_log_probabilities, entropy
+        return action, action_log_probabilities, entropy, distribution

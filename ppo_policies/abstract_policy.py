@@ -17,8 +17,14 @@ class AbstractPolicy(ABC):
     def train(self, batch, training_config):
         pass
 
+    def _format_observation(self, board, interoception):
+        flattened_board = board.detach().clone()
+        flattened_board = torch.flatten(flattened_board, start_dim=1)
+
+        return torch.cat((flattened_board, interoception.detach().clone()),1)
+
     def _get_ratios(self, new_actions_log_probabilities, old_actions_log_probabilities):
-        return torch.exp(new_actions_log_probabilities - old_actions_log_probabilities)
+        return torch.exp(new_actions_log_probabilities - old_actions_log_probabilities.detach())
 
     def _get_actor_loss(self, ratios, advantages, eps, entropy_coef, entropies):
         """
@@ -27,7 +33,7 @@ class AbstractPolicy(ABC):
         actor_loss = ratios * advantages
         actor_loss_clipped = torch.clamp(ratios, 1.0 - eps, 1.0 + eps) * advantages
         actor_loss = -torch.min(actor_loss, actor_loss_clipped)
-        actor_loss = actor_loss - entropy_coef * entropies
+        actor_loss = actor_loss + entropy_coef * entropies
 
         return actor_loss.mean()
 

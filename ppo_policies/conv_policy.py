@@ -5,18 +5,22 @@ import torch
 
 from ppo_policies.abstract_policy import AbstractPolicy
 from networks.feed_forward import FeedForward
+from networks.convolutional import Convolutional
 from networks.actor import Actor
 from networks.critic import Critic
 
 
-class BasicPolicy(AbstractPolicy):
-    def __init__(self, input_dim, actions_dim, training_config):
-        super(BasicPolicy, self).__init__()
+class ConvPolicy(AbstractPolicy):
+    def __init__(self, actions_dim, training_config):
+        super(ConvPolicy, self).__init__()
 
         self._training_config = training_config
 
-        self._actor_feedforward = FeedForward(input_dim, 64)
-        self._critic_feedforward = FeedForward(input_dim, 64)
+        self._actor_conv = Convolutional()
+        self._critic_conv = Convolutional()
+
+        self._actor_feedforward = FeedForward(1026, 64)
+        self._critic_feedforward = FeedForward(1026, 64)
 
         self._actor = Actor(64, actions_dim)
         self._critic = Critic(64)
@@ -32,32 +36,31 @@ class BasicPolicy(AbstractPolicy):
         )
 
     def select_action(self, observation):
-        input = super()._format_observation(observation["board"], observation["interoception"])
-
         with(torch.no_grad()):
-            x = self._actor_feedforward(input)
+            x_conv = self._actor_conv(observation["board"])
+            x = self._actor_feedforward(torch.cat((x_conv, observation["interoception"]),1))
             action, action_log_probabilities, entropy, _ = self._actor(x)
 
         return action, action_log_probabilities, entropy
 
     def predict_value(self, observation):
-        input = super()._format_observation(observation["board"], observation["interoception"])
-
         with(torch.no_grad()):
-            x = self._critic_feedforward(input)
+            x_conv = self._critic_conv(observation["board"])
+            x = self._critic_feedforward(torch.cat((x_conv, observation["interoception"]), 1))
             value = self._critic(x)
 
         return value
 
     def train(self, batch):
-
-        observation = super()._format_observation(batch['board'], batch["interoception"])
-
-        actor_features = self._actor_feedforward(observation)
+        actor_feedforward_features = self._actor_conv(batch["board"])
+        actor_features = self._actor_feedforward(torch.cat((actor_feedforward_features, batch["interoception"]), 1))
         _, _, entropies, distribution = self._actor(actor_features)
+
         new_action_log_probs = distribution.log_prob(batch['action'])
 
-        critic_features = self._critic_feedforward(observation)
+
+        critic_feedforward_features = self._critic_conv(batch["board"])
+        critic_features = self._critic_feedforward(torch.cat((critic_feedforward_features, batch["interoception"]), 1))
         values = self._critic(critic_features)
 
         critic_loss = super()._get_critic_loss(values, batch["return"])
@@ -77,13 +80,12 @@ class BasicPolicy(AbstractPolicy):
 
         self._actor_optimizer.zero_grad()
         actor_loss.backward()
-        nn.utils.clip_grad_norm_(self._actor.parameters(), self._training_config.get_max_grad_norm())
+        # TODO nn.utils.clip_grad_norm_(self._actor.parameters(), training_config.get_max_grad_norm())
         self._actor_optimizer.step()
 
         self._critic_optimizer.zero_grad()
         critic_loss.backward()
-        nn.utils.clip_grad_norm_(self._critic.parameters(), self._training_config.get_max_grad_norm())
+        # TODO nn.utils.clip_grad_norm_(self._critic.parameters(), training_config.get_max_grad_norm())
         self._critic_optimizer.step()
 
         return actor_loss, critic_loss, entropies.mean()
-

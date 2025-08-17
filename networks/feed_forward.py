@@ -9,9 +9,10 @@ class FeedForward(nn.Module):
 
         self._feedforward = nn.Sequential(
             nn.Linear(input_dim, 64),
-            nn.ReLU(),
+            nn.Tanh(),
             nn.Dropout(0.2),
-            nn.Linear(64, output_dim)
+            nn.Linear(64, output_dim),
+            nn.Tanh()
         )
 
     def forward(self, x):

@@ -9,17 +9,20 @@ from networks.actor import Actor
 from networks.critic import Critic
 
 
-class BasicPolicy(AbstractPolicy):
+class RecurrentPolicy(AbstractPolicy):
     def __init__(self, input_dim, actions_dim, training_config):
-        super(BasicPolicy, self).__init__()
+        super(RecurrentPolicy, self).__init__()
 
         self._training_config = training_config
 
-        self._actor_feedforward = FeedForward(input_dim, 64)
-        self._critic_feedforward = FeedForward(input_dim, 64)
+        self._actor_lstm = nn.LSTM(input_dim, 64, 2)
+        self._critic_lstm = nn.LSTM(input_dim, 64, 2)
 
         self._actor = Actor(64, actions_dim)
         self._critic = Critic(64)
+
+        self._last_actor_h = None
+        self._last_critic_h = None
 
         self._actor_optimizer = optim.Adam(
             self._actor.parameters(),
@@ -35,8 +38,8 @@ class BasicPolicy(AbstractPolicy):
         input = super()._format_observation(observation["board"], observation["interoception"])
 
         with(torch.no_grad()):
-            x = self._actor_feedforward(input)
-            action, action_log_probabilities, entropy, _ = self._actor(x)
+            h, _ = self._actor_lstm(input)
+            action, action_log_probabilities, entropy = self._actor(h)
 
         return action, action_log_probabilities, entropy
 
@@ -44,27 +47,34 @@ class BasicPolicy(AbstractPolicy):
         input = super()._format_observation(observation["board"], observation["interoception"])
 
         with(torch.no_grad()):
-            x = self._critic_feedforward(input)
-            value = self._critic(x)
+            h, _ = self._critic_lstm(input)
+            value = self._critic(h)
 
         return value
 
+    def get_last_actor_h(self):
+        return self._last_actor_h
+
+    def get_last_critic_h(self):
+        return self._last_critic_h
+
     def train(self, batch):
 
-        observation = super()._format_observation(batch['board'], batch["interoception"])
+        observation = super()._format_observation(batch["board"], batch["interoception"])
 
-        actor_features = self._actor_feedforward(observation)
-        _, _, entropies, distribution = self._actor(actor_features)
-        new_action_log_probs = distribution.log_prob(batch['action'])
+        h_actor, _ = self._actor_lstm(observation)
+        _, _, entropies, distribution = self._actor(h_actor)
 
-        critic_features = self._critic_feedforward(observation)
-        values = self._critic(critic_features)
+        new_action_log_probs = distribution.log_prob(batch["action"])
+
+        h_critic, _ = self._critic_lstm(observation)
+        values = self._critic.forward(h_critic)
 
         critic_loss = super()._get_critic_loss(values, batch["return"])
 
         ratios =  super()._get_ratios(
             new_action_log_probs,
-            batch['action_log_probabilities']
+            batch["action_log_probabilities"]
         )
 
         actor_loss = super()._get_actor_loss(
@@ -86,4 +96,3 @@ class BasicPolicy(AbstractPolicy):
         self._critic_optimizer.step()
 
         return actor_loss, critic_loss, entropies.mean()
-

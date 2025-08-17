@@ -11,9 +11,9 @@ class ExperimentPlotter:
     # TODO función para guardar las gráficas de las pérdidas y la entropía
     def __init__(self, logger, save_path = "experiments/plots"):
         self._experiment_log, self._episode_log, self._training_log = logger.get_log()
-        self._save_path = save_path
+        self._save_path = os.path.join(save_path, self._experiment_log["id"])
 
-        os.makedirs(save_path, exist_ok=True)
+        os.makedirs(self._save_path, exist_ok=True)
 
         self._figsize = (10, 6)
         self._dpi = 100
