@@ -3,15 +3,15 @@ class TrainingConfig:
     def __init__(
             self,
             replay_buffer_size = 2**16,
-            min_buffer_size = 2**11,
-            n_batches = 32,
-            batch_size = 64,
-            epochs = 10,
-            train_per_steps = 1000,
-            lr=1e-4,
+            min_buffer_size = 2**8,
+            n_batches = 4,
+            batch_size = 32,
+            epochs = 4,
+            train_per_steps = 500,
+            lr=5e-2,
             max_grad_norm = 1.0,
             clipping_eps = 0.2,
-            entropy_coef = 0.1,
+            entropy_coef = 1e-5,
             gamma = 0.99,
             gae_lambda = 0.95
     ):
@@ -26,7 +26,7 @@ class TrainingConfig:
         self._clipping_eps = clipping_eps
         self._entropy_coef = entropy_coef
         self._gamma = gamma
-        self._gaed_lambda = gae_lambda
+        self._gae_lambda = gae_lambda
 
     def get_replay_buffer_size(self):
         return self._replay_buffer_size
@@ -62,4 +62,4 @@ class TrainingConfig:
         return self._gamma
 
     def get_gae_lambda(self):
-        return self._gaed_lambda
+        return self._gae_lambda

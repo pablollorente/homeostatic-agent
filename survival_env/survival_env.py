@@ -209,11 +209,13 @@ class SurvivalEnv(gym.Env):
 
         if action == 0:
             self._agent.add_energy(-0.01)
+            self._agent.add_integrity(0.05)
         else:
             self._agent.add_energy(-0.05)
+            self._agent.add_integrity(0.1)
 
         if damage:
-            self._agent.add_energy(-0.2)
+            self._agent.add_energy(-0.05)
 
         if food:
             self._agent.add_energy(1)
