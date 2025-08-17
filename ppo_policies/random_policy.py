@@ -2,7 +2,7 @@ import random
 
 
 class RandomPolicy(Policy):
-    def __init__(self, input_dim, actions_dim):
+    def __init__(self, actions_dim):
         super(RandomPolicy, self).__init__()
 
         self._actions_dim = actions_dim
@@ -13,5 +13,5 @@ class RandomPolicy(Policy):
     def predict_value(self, observation):
         return 0
 
-    def train(self, batch, training_config):
+    def train(self, batch):
         return

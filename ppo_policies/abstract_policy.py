@@ -14,7 +14,7 @@ class AbstractPolicy(ABC):
         pass
 
     @abstractmethod
-    def train(self, batch, training_config):
+    def train(self, batch):
         pass
 
     def _format_observation(self, board, interoception):

@@ -9,6 +9,7 @@ from ppo_policies.basic_policy import BasicPolicy
 from ppo_policies.conv_policy import ConvPolicy
 from ppo_policies.recurrent_policy import RecurrentPolicy
 from ppo_policies.conv_recurrent_policy import ConvRecurrentPolicy
+from ppo_policies.random_policy import RandomPolicy
 from training_config import TrainingConfig
 from survival_env.env_transformer import EnvTranformer
 from ppo_utils import PPOUtils
@@ -29,7 +30,7 @@ class App:
         )
         parser.add_argument(
             '--policy',
-            choices=['basic', 'conv', 'recurrent', 'convrec'],
+            choices=['basic', 'conv', 'recurrent', 'convrec', 'random'],
             default="basic",
             help="Tipo de red para la política del agente: básica o feedforward, convolucional, recurrente o convolucional y recurrente."
         )
@@ -142,7 +143,8 @@ class App:
             "basic": BasicPolicy(770, 5, training_config),
             "conv": ConvPolicy(5, training_config),
             "recurrent": RecurrentPolicy(770, 5, training_config),
-            "convrec": ConvRecurrentPolicy(5, training_config)
+            "convrec": ConvRecurrentPolicy(5, training_config),
+            "random": RandomPolicy(5)
         }
 
         return policy_switch.get(policy, BasicPolicy(770, 5, training_config))
