@@ -12,6 +12,7 @@ from ppo_policies.conv_recurrent_policy import ConvRecurrentPolicy
 from ppo_policies.random_policy import RandomPolicy
 from training_config import TrainingConfig
 from survival_env.env_transformer import EnvTranformer
+from survival_env.reward_calculator import RewardCalculator
 from ppo_utils import PPOUtils
 from experiment_logging.experiment_logger import ExperimentLogger
 from experiment_logging.experiment_plotter import ExperimentPlotter
@@ -109,6 +110,8 @@ class App:
 
         training_replay_buffer.extend(complete_buffer_data)
 
+        interoception_prediction_loss = None
+
         for epoch in range(training_config.get_epochs()):
             print("-----------------------------------------------")
             print(f"Época {epoch + 1}:")
@@ -119,8 +122,13 @@ class App:
 
                 actor_loss, critic_loss, entropy = agent.train(batch)
 
-                print(
-                    f"Batch {batch_num + 1}/{training_config.get_n_batches()}. Actor loss: {actor_loss:.4f}, critic loss: {critic_loss:.4f}, entropy: {entropy:.4f}")
+                batch_str = f"Batch {batch_num + 1}/{training_config.get_n_batches()}. Actor loss: {actor_loss:.4f}, critic loss: {critic_loss:.4f}, entropy: {entropy:.4f}"
+
+                if self._args.intero:
+                    interoception_prediction_loss = agent.train_interoception_prediction(batch)
+                    batch_str += f", interoception prediction loss: {interoception_prediction_loss:.4f}"
+
+                print(batch_str)
 
         if device == "cuda":
             torch.cuda.synchronize()
@@ -135,7 +143,7 @@ class App:
 
         print(f"Duración: {training_time}")
 
-        self._logger.log_training_end(actor_loss.item(), critic_loss.item(), entropy.item())
+        self._logger.log_training_end(actor_loss.item(), critic_loss.item(), entropy.item(), interoception_prediction_loss)
 
     def _get_policy(self, policy, training_config):
         # TODO sacar las dimensiones programáticamente mediante los espacios de la observación del entorno
@@ -161,6 +169,7 @@ class App:
         device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
 
         agent = Agent(
+            [1.0, 1.0],
             policy,
             training_config,
             self._args.innate,
@@ -174,10 +183,12 @@ class App:
             sampler=SamplerWithoutReplacement(),
         )
 
+        reward_calculator = RewardCalculator()
+
         step_count = 0
         training_count = 0
 
-        self._logger.log_experiment_start(self._args.episodes, self._args.policy, training_config)
+        self._logger.log_experiment_start(self._args.episodes, self._args.policy, training_config, self._args.intero, self._args.imagination)
 
         for episode in range(0, self._args.episodes):
             done = False
@@ -190,6 +201,8 @@ class App:
             actions_count = [0,0,0,0,0]
 
             observation, info = env.reset()
+
+            observation["interoception"] = agent.get_interoceptive_state()
 
             tensor_observation, tensor_reward = EnvTranformer.to_tensor(observation, device=device)
 
@@ -212,11 +225,29 @@ class App:
                 step_data["interoception_prediction"] = agent.predict_interoception(
                     tensor_observation) if self._args.intero else None
 
-                observation, reward, terminated, truncated, info = env.step(action.item())
+                observation, _, _, _, info = env.step(action.item())
 
-                tensor_observation, tensor_reward = EnvTranformer.to_tensor(observation, reward, device)
+                previous_interoception = agent.get_interoceptive_state().copy()
 
-                done = terminated or truncated
+                agent.update_interoception(info)
+
+                observation["interoception"] = agent.get_interoceptive_state().copy()
+
+                tensor_observation, _ = EnvTranformer.to_tensor(observation, 0, device)
+
+                predicted_interoception = agent.predict_interoception(tensor_observation) if self._args.intero else None
+
+                print(f"DEBUG -> predicted interoception: {predicted_interoception}")
+
+                reward = reward_calculator.calculate_reward(
+                    previous_interoception,
+                    agent.get_interoceptive_state(),
+                    predicted_interoception
+                )
+
+                _, tensor_reward = EnvTranformer.to_tensor(None, reward, device)
+
+                done = agent.is_dead()
 
                 step_data["reward"] = tensor_reward.squeeze()
                 step_data["done"] = torch.tensor(done, device=device)
@@ -239,6 +270,8 @@ class App:
                 damage_count += info["damage"]
                 total_distance_to_monster += info["distance_to_monster"]
                 actions_count[action.item()] += 1
+
+            agent.reset()
 
             mean_distance_to_monster = total_distance_to_monster / step_count
             mean_reward = total_reward / episode_duration

@@ -1,4 +1,4 @@
-class Interoception():
+class HomeostaticAgent():
     def __init__(self, initial_interoceptive_state):
         self._initial_interoceptive_state = initial_interoceptive_state
         self._interoceptive_state = initial_interoceptive_state.copy()
@@ -19,3 +19,6 @@ class Interoception():
 
     def is_dead(self):
         return self._interoceptive_state[0] <= 0 or self._interoceptive_state[1] <= 0
+
+    def reset(self):
+        self._interoceptive_state = self._initial_interoceptive_state.copy()

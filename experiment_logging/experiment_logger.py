@@ -11,7 +11,9 @@ class ExperimentLogger:
             "id": str(uuid.uuid4()),
             "start_datetime": None,
             "end_datetime": None,
-            "agent_type": None,
+            "interoception_prediction": False,
+            "imagination": False,
+            "policy_type": None,
             "episodes": 0,
             "steps": 0,
             "training_configuration": None
@@ -36,11 +38,13 @@ class ExperimentLogger:
             "entropy": np.array([]),
         }
 
-    def log_experiment_start(self, episodes, agent_type, training_conf):
+    def log_experiment_start(self, episodes, policy_type, training_conf, interoception_prediction, imagination):
         self._experiment_log["start_datetime"] = time.localtime()
         self._experiment_log["episodes"] = episodes
-        self._experiment_log["agent_type"] = agent_type
+        self._experiment_log["policy_type"] = policy_type
         self._experiment_log["training_configuration"] = training_conf.__dict__
+        self._experiment_log["interoception_prediction"] = interoception_prediction
+        self._experiment_log["imagination"] = imagination
 
     def log_experiment_end(self):
         self._experiment_log["end_datetime"] = time.strftime("%Y-%M-%d %H:%M:%S", time.localtime())
@@ -69,10 +73,17 @@ class ExperimentLogger:
     def log_training_start(self):
         self._training_log["start_datetime"] = np.append(self._training_log["start_datetime"], time.strftime("%Y-%M-%d %H:%M:%S", time.localtime()))
 
-    def log_training_end(self, actor_loss, critic_loss, entropy):
+        if self._experiment_log["interoception_prediction"]:
+            self._training_log["interoception_prediction_loss"] = np.array([])
+
+    def log_training_end(self, actor_loss, critic_loss, entropy, interoception_prediction_loss = None):
         self._training_log["actor_loss"] = np.append(self._training_log["actor_loss"], actor_loss)
         self._training_log["critic_loss"] = np.append(self._training_log["critic_loss"], critic_loss)
         self._training_log["entropy"] = np.append(self._training_log["entropy"], entropy)
+
+        if self._experiment_log["interoception_prediction"]:
+            self._training_log["interoception_prediction_loss"] = np.append(self._training_log["interoception_prediction_loss"], interoception_prediction_loss)
+
         self._training_log["end_datetime"] = np.append(self._training_log["end_datetime"], time.strftime("%Y-%M-%d %H:%M:%S", time.localtime()))
 
     def save_to_json_file(self, path = "experiments/logs"):
@@ -108,10 +119,13 @@ class ExperimentLogger:
                 "entropy": self._training_log["entropy"][index],
             }
 
+            if self._experiment_log["interoception_prediction"]:
+                training_round["interoception_prediction_loss"] = self._training_log["interoception_prediction_loss"][index]
+
             log["training_rounds"].append(training_round)
 
         filename = (f"{time.strftime('%Y%M%d_%H%M%S', self._experiment_log['start_datetime'])}"
-                    f"_experiment_{self._experiment_log['agent_type']}"
+                    f"_experiment_{self._experiment_log['policy_type']}"
                     f"_{str(self._experiment_log['episodes'])}"
                     f"_{self._experiment_log['id']}.json"
         )

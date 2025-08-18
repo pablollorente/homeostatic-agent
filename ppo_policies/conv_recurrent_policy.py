@@ -43,7 +43,7 @@ class ConvRecurrentPolicy(AbstractPolicy, RecurrentPolicyInterface):
         with(torch.no_grad()):
             x_conv = self._actor_conv(observation["board"])
             h, _ = self._actor_lstm(torch.cat((x_conv, observation["interoception"]), 1))
-            action, action_log_probabilities, entropy = self._actor(h)
+            action, action_log_probabilities, entropy, _ = self._actor(h)
 
             self._last_actor_h = h
 

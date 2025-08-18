@@ -39,7 +39,7 @@ class RecurrentPolicy(AbstractPolicy):
 
         with(torch.no_grad()):
             h, _ = self._actor_lstm(input)
-            action, action_log_probabilities, entropy = self._actor(h)
+            action, action_log_probabilities, entropy, _ = self._actor(h)
 
         return action, action_log_probabilities, entropy
 

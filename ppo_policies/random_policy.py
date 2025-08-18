@@ -1,7 +1,9 @@
 import random
 
+from ppo_policies.abstract_policy import AbstractPolicy
 
-class RandomPolicy(Policy):
+
+class RandomPolicy(AbstractPolicy):
     def __init__(self, actions_dim):
         super(RandomPolicy, self).__init__()
 
