@@ -4,34 +4,34 @@ import numpy as np
 class RewardCalculator:
     """
     Calcula recompensas homeostáticas basadas en la distancia al punto de equilibrio
-    y la diferencia entre lo real y lo imaginado.
+    y la diferencia entre lo reducción de distancia al equilibrio real y la imaginada ponderada.
 
-    La fórmula de la recompensa es: r = real - (imaginada/2)
+    La fórmula de la recompensa es: r = real - coef * imaginada
 
     Donde:
     - real: es la reducción de la distancia al equilibrio homeostático [1,1] en el estado real
     - imaginada: es la reducción de la distancia "imaginada" por el agente
     """
 
-    def __init__(self, pred_intero_coef = 0.5):
+    def __init__(self, pred_intero_coef = 0.5, dist_to_equilibrium_coef = 5e-3):
         """
         Inicializa el calculador de recompensas.
         """
         # Punto de equilibrio homeostático [energía, integridad]
         self._homeostatic_equilibrium = np.array([1.0, 1.0])
         self._pred_intero_coef = pred_intero_coef
+        self._dist_to_equilibrium_coef = dist_to_equilibrium_coef
 
     def _get_distance_to_equilibrium(self, interoceptive_state):
         """
-        Calcula la distancia euclidiana entre el estado interoceptivo y el equilibrio.
+        Calcula la distancia euclidiana entre el estado interoceptivo y el punto de equilibrio homeostático
 
         Args:
             interoceptive_state: Vector interoceptivo
 
         Returns:
-            distance: Distancia al equilibrio
+            distance: Distancia al punto
         """
-        # Calcular distancia euclidiana
         return np.linalg.norm(interoceptive_state - self._homeostatic_equilibrium)
 
     def _get_distance_reduction(self, previous_interoception, current_interoception):
@@ -56,7 +56,10 @@ class RewardCalculator:
 
     def calculate_reward(self, previous_interoception, current_interoception, predicted_interoception = None):
         """
-        Calcula la recompensa homeostática según la fórmula: r = sign(real - (imaginada/2)) * 100 ^ abs(real - (imaginada/2))
+        Calcula la recompensa homeostática según la fórmula: r = (real - coef * imaginada) * 10.
+        real - coef * imaginada se llama delta y, cuando no hay predicción de la interocepion delta = real.
+        A delta se le suma la división entre un coeficiente y la distancia al equilibrio, para dar mayores recompensas
+        cuando el agente está cerca del equilibrio, aunque pierda energía o integridad.
 
         Args:
             previous_interoception: Estado interoceptivo real anterior
@@ -69,7 +72,7 @@ class RewardCalculator:
         # Calcular reducción de distancia real
         real_reduction = self._get_distance_reduction(previous_interoception, current_interoception)
 
-        if predicted_interoception:
+        if predicted_interoception != None:
             # Calcular reducción de distancia imaginada
             predicted_reduction = self._get_distance_reduction(previous_interoception, predicted_interoception)
 
@@ -80,6 +83,14 @@ class RewardCalculator:
 
         sign = np.sign(delta)
 
-        reward = sign * np.power(100, np.absolute(delta))
+        # Acotamos el rango de delta al máximo de distancia entre el origen del vector [0, 0] y el final [1, 1], que es sqrt(2)
+        # ya que, cuando se utiliza la predicción de la interocepción no hay límite al valor predicho.
+        delta_clipped = np.clip(np.absolute(delta), 0, np.sqrt(2))
+
+        distance_to_equilibrium = self._get_distance_to_equilibrium(current_interoception)
+
+        delta_scaled = sign * delta_clipped + self._dist_to_equilibrium_coef / (distance_to_equilibrium + 1e-3)
+
+        reward = delta_scaled * 10
 
         return reward.item()
