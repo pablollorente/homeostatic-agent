@@ -3,15 +3,15 @@ class TrainingConfig:
     def __init__(
             self,
             replay_buffer_size = 2**16,
-            min_buffer_size = 2**8,
-            n_batches = 4,
-            batch_size = 32,
-            epochs = 4,
-            train_per_steps = 500,
-            lr=5e-2,
-            max_grad_norm = 1.0,
+            min_buffer_size = 512,
+            n_batches = 32,
+            batch_size = 64,
+            epochs = 10,
+            train_per_steps = 2048,
+            lr=1e-3,
+            max_grad_norm = 0.5,
             clipping_eps = 0.2,
-            entropy_coef = 1e-5,
+            entropy_coef = 0.0,
             gamma = 0.99,
             gae_lambda = 0.95
     ):

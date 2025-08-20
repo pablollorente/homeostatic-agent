@@ -54,23 +54,95 @@ class App:
             "--episodes",
             type=int,
             default=100,
-            help="Número de episodios"
+            help="Número de episodios."
         )
         parser.add_argument(
             "--render",
             action="store_true",
-            help="Renderizar el entorno durante la ejecución"
+            help="Renderizar el entorno durante la ejecución."
         )
         parser.add_argument(
             "--model-path",
             type=str,
-            help="Ruta al modelo guardado que se quiere ejecutar"
+            help="Ruta al modelo guardado que se quiere ejecutar."
         )
         parser.add_argument(
             "--save-path",
             type=str,
             default="models",
-            help="Ruta para guardar modelos"
+            help="Ruta para guardar modelos."
+        )
+        parser.add_argument(
+            "--buffer-size",
+            type=int,
+            default=2**16,
+            help="Tamaño máximo del buffer de memoria de pasos temporales."
+        )
+        parser.add_argument(
+            "--min-buffer-size",
+            type=int,
+            default=512,
+            help="Ocupación mínima del buffer para realizar un entrenamiento."
+        )
+        parser.add_argument(
+            "--n-batches",
+            type=int,
+            default=32,
+            help="Número de mini batches por época de entrenamiento."
+        )
+        parser.add_argument(
+            "--batch-size",
+            type=int,
+            default=64,
+            help="Tamaño del mini batch de entrenamiento."
+        )
+        parser.add_argument(
+            "--epochs",
+            type=int,
+            default=10,
+            help="Número de épocas de cada ciclo de entrenamiento."
+        )
+        parser.add_argument(
+            "--steps-to-train",
+            type=int,
+            default=2048,
+            help="Número de steps necesarios que tienen que haberse ejecutado para realizar un entrenamiento desde el último."
+        )
+        parser.add_argument(
+            "--lr",
+            type=float,
+            default=5e-4,
+            help="Learning rate"
+        )
+        parser.add_argument(
+            "--max-grad-norm",
+            type=float,
+            default=0.5,
+            help="Límite superior para realizar el clipping sobre la norma de los gradientes"
+        )
+        parser.add_argument(
+            "--clipping-eps",
+            type=float,
+            default=0.2,
+            help="Parámetro para estabelcer el límite inferior y superior para realizar el clipping sobre pérdida del actor en PPO"
+        )
+        parser.add_argument(
+            "--entropy-coef",
+            type=float,
+            default=0.2,
+            help="Coefiente para aplicar sobre el bonus de entropía en la pérdida del actor de PPO"
+        )
+        parser.add_argument(
+            "--gamma",
+            type=float,
+            default=0.2,
+            help="Factor de descuento de la funcion de utilidad"
+        )
+        parser.add_argument(
+            "--gae-lambda",
+            type=float,
+            default=0.2,
+            help="Factor de descuento del GAE"
         )
 
         self._args = parser.parse_args()
@@ -148,9 +220,9 @@ class App:
     def _get_policy(self, policy, training_config):
         # TODO sacar las dimensiones programáticamente mediante los espacios de la observación del entorno
         policy_switch = {
-            "basic": BasicPolicy(770, 5, training_config),
+            "basic": BasicPolicy(768, 5, training_config),
             "conv": ConvPolicy(5, training_config),
-            "recurrent": RecurrentPolicy(770, 5, training_config),
+            "recurrent": RecurrentPolicy(768, 5, training_config),
             "convrec": ConvRecurrentPolicy(5, training_config),
             "random": RandomPolicy(5)
         }
@@ -162,7 +234,20 @@ class App:
 
         env = SurvivalEnv()
 
-        training_config = TrainingConfig()
+        training_config = TrainingConfig(
+            self._args.buffer_size,
+            self._args.min_buffer_size,
+            self._args.n_batches,
+            self._args.batch_size,
+            self._args.epochs,
+            self._args.steps_to_train,
+            self._args.lr,
+            self._args.max_grad_norm,
+            self._args.clipping_eps,
+            self._args.entropy_coef,
+            self._args.gamma,
+            self._args.gae_lambda
+        )
 
         policy = self._get_policy(self._args.policy, training_config)
 
@@ -236,8 +321,6 @@ class App:
                 tensor_observation, _ = EnvTranformer.to_tensor(observation, 0, device)
 
                 predicted_interoception = agent.predict_interoception(tensor_observation) if self._args.intero else None
-
-                print(f"DEBUG -> predicted interoception: {predicted_interoception}")
 
                 reward = reward_calculator.calculate_reward(
                     previous_interoception,
