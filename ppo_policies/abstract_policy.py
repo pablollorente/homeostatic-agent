@@ -23,6 +23,12 @@ class AbstractPolicy(ABC):
 
         return torch.cat((flattened_board, interoception.detach().clone()),1)
 
+    def _format_observation_new(self, board, interoception):
+        flattened_board = board.detach().clone()
+        flattened_board = torch.flatten(flattened_board, start_dim=1)
+
+        return flattened_board, interoception.detach().clone()
+
     def _get_ratios(self, new_actions_log_probabilities, old_actions_log_probabilities):
         return torch.exp(new_actions_log_probabilities - old_actions_log_probabilities.detach())
 
@@ -32,10 +38,10 @@ class AbstractPolicy(ABC):
         """
         actor_loss = ratios * advantages
         actor_loss_clipped = torch.clamp(ratios, 1.0 - eps, 1.0 + eps) * advantages
-        actor_loss = -torch.min(actor_loss, actor_loss_clipped)
-        actor_loss = actor_loss + entropy_coef * entropies
+        min_actor_loss = -torch.min(actor_loss, actor_loss_clipped)
+        final_actor_loss = min_actor_loss - entropy_coef * entropies.mean()
 
-        return actor_loss.mean()
+        return final_actor_loss.mean()
 
     def _get_critic_loss(self, values, returns):
         return F.mse_loss(values.view(-1), returns)

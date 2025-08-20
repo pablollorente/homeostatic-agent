@@ -19,9 +19,11 @@ class ExperimentPlotter:
         self._dpi = 100
 
     def plot_duration_of_episodes(self):
+        window_size = int(np.trunc(np.sqrt(self._experiment_log["episodes"])))
+
         plt.figure(figsize=self._figsize)
-        plt.plot(self._episode_log["duration"], linewidth=2)
-        plt.plot(self._get_moving_avg(self._episode_log["duration"]), color="b", alpha=0.5, linewidth=2)
+        plt.plot(self._episode_log["duration"], alpha=0.4, linewidth=2)
+        plt.plot(self._get_moving_avg(self._episode_log["duration"], window_size), color="b", alpha=0.8, linewidth=2)
         plt.xlabel('Episodio')
         plt.ylabel('Duración (steps)')
         plt.title('Duración en steps por episodio')
@@ -54,10 +56,15 @@ class ExperimentPlotter:
         return filepath
 
     def plot_events(self):
+        window_size = int(np.trunc(np.sqrt(self._experiment_log["episodes"])))
+
         plt.figure(figsize=self._figsize)
-        plt.plot(self._episode_log["food_count"], color="g", linewidth=2, label='Comida consumida', alpha=0.8)
-        plt.plot(self._episode_log["medicine_count"], color="b", linewidth=2, label='Medicina consumida', alpha=0.8)
-        plt.plot(self._episode_log["damage_count"], color="r", linewidth=2, label='Mordiscos del monstruo', alpha=0.8)
+        plt.plot(self._episode_log["food_count"], color="g", linewidth=2, label='Comida consumida', alpha=0.4)
+        plt.plot(self._get_moving_avg(self._episode_log["food_count"], window_size), color="g", alpha=0.8, linewidth=2)
+        plt.plot(self._episode_log["medicine_count"], color="b", linewidth=2, label='Medicina consumida', alpha=0.4)
+        plt.plot(self._get_moving_avg(self._episode_log["medicine_count"], window_size), color="b", alpha=0.8, linewidth=2)
+        plt.plot(self._episode_log["damage_count"], color="r", linewidth=2, label='Mordiscos del monstruo', alpha=0.4)
+        plt.plot(self._get_moving_avg(self._episode_log["damage_count"], window_size), color="r", alpha=0.8, linewidth=2)
 
         plt.xlabel('Episodio')
         plt.ylabel('Cantidad')
@@ -75,8 +82,11 @@ class ExperimentPlotter:
         return filepath
 
     def plot_cumulative_reward(self):
+        window_size = int(np.trunc(np.sqrt(self._experiment_log["episodes"])))
+
         plt.figure(figsize=self._figsize)
-        plt.plot(self._episode_log["cumulative_reward"], linewidth=2, markersize=4)
+        plt.plot(self._episode_log["cumulative_reward"], alpha=0.4, linewidth=2, markersize=4)
+        plt.plot(self._get_moving_avg(self._episode_log["cumulative_reward"], window_size), alpha=0.8, linewidth=2)
         plt.xlabel('Episodio')
         plt.ylabel('Recompensa acumulada')
         plt.title('Recompensa acumulada por episodio')
@@ -92,8 +102,11 @@ class ExperimentPlotter:
         return filepath
 
     def plot_avg_reward(self):
+        window_size = int(np.trunc(np.sqrt(self._experiment_log["episodes"])))
+
         plt.figure(figsize=self._figsize)
-        plt.plot(self._episode_log["avg_reward"], linewidth=2, markersize=4)
+        plt.plot(self._episode_log["avg_reward"], alpha=0.4, linewidth=2, markersize=4)
+        plt.plot(self._get_moving_avg(self._episode_log["avg_reward"], window_size), alpha=0.8, linewidth=2)
         plt.xlabel('Episodio')
         plt.ylabel('Recompensa media')
         plt.title('Recompensa media por episodio')
@@ -109,10 +122,13 @@ class ExperimentPlotter:
         return filepath
 
     def plot_actor_loss(self):
-        training_rounds = range(len(self._training_log["actor_loss"]))
+        training_rounds = len(self._training_log["actor_loss"])
+
+        window_size = int(np.trunc(np.sqrt(training_rounds)))
 
         plt.figure(figsize=self._figsize)
-        plt.plot(training_rounds, self._training_log["actor_loss"], linewidth=2, markersize=4)
+        plt.plot(self._training_log["actor_loss"], alpha=0.4, linewidth=2, markersize=4)
+        plt.plot(self._get_moving_avg(self._training_log["actor_loss"], window_size), alpha=0.8, linewidth=2)
         plt.xlabel('Entrenamiento')
         plt.ylabel('Pérdida del actor')
         plt.title('Pérdida del actor por entrenamiento')
@@ -128,10 +144,13 @@ class ExperimentPlotter:
         return filepath
 
     def plot_critic_loss(self):
-        training_rounds = range(len(self._training_log["critic_loss"]))
+        training_rounds = len(self._training_log["critic_loss"])
+
+        window_size = int(np.trunc(np.sqrt(training_rounds)))
 
         plt.figure(figsize=self._figsize)
-        plt.plot(training_rounds, self._training_log["critic_loss"], linewidth=2, markersize=4)
+        plt.plot(self._training_log["critic_loss"], alpha=0.4, linewidth=2, markersize=4)
+        plt.plot(self._get_moving_avg(self._training_log["critic_loss"], window_size), alpha=0.8, linewidth=2)
         plt.xlabel('Entrenamiento')
         plt.ylabel('Pérdida del crítico')
         plt.title('Pérdida del crítico por entrenamiento')
@@ -147,10 +166,13 @@ class ExperimentPlotter:
         return filepath
 
     def plot_entropy(self):
-        training_rounds = range(len(self._training_log["entropy"]))
+        training_rounds = len(self._training_log["entropy"])
+
+        window_size = int(np.trunc(np.sqrt(training_rounds)))
 
         plt.figure(figsize=self._figsize)
-        plt.plot(training_rounds, self._training_log["entropy"], linewidth=2, markersize=4)
+        plt.plot(self._training_log["entropy"], alpha=0.4, linewidth=2, markersize=4)
+        plt.plot(self._get_moving_avg(self._training_log["entropy"], window_size), alpha=0.8, linewidth=2)
         plt.xlabel('Entrenamiento')
         plt.ylabel('Entropía del actor')
         plt.title('Entropía del actor por entrenamiento')

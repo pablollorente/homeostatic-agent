@@ -7,8 +7,11 @@ class InteroceptionPredictor(nn.Module):
         super(InteroceptionPredictor, self).__init__()
 
         self._interoception_predictor = nn.Sequential(
-            nn.Linear(input_dim, 2),
-            nn.Sigmoid()
+            nn.Linear(input_dim, 64),
+            nn.LeakyReLU(0.1),
+            nn.Linear(64, 16),
+            nn.LeakyReLU(0.1),
+            nn.Linear(16, 2),
         )
 
     def forward(self, x):

@@ -18,8 +18,11 @@ class RecurrentPolicy(AbstractPolicy):
         self._actor_lstm = nn.LSTM(input_dim, 64, 2)
         self._critic_lstm = nn.LSTM(input_dim, 64, 2)
 
-        self._actor = Actor(64, actions_dim)
-        self._critic = Critic(64)
+        self._actor_feedforward = FeedForward(64, 4)
+        self._critic_feedforward = FeedForward(64, 4)
+
+        self._actor = Actor(6, actions_dim)
+        self._critic = Critic(6)
 
         self._last_actor_h = None
         self._last_critic_h = None
@@ -35,20 +38,24 @@ class RecurrentPolicy(AbstractPolicy):
         )
 
     def select_action(self, observation):
-        input = super()._format_observation(observation["board"], observation["interoception"])
+        flattened_board = torch.flatten(observation["board"], start_dim=1)
 
-        with(torch.no_grad()):
-            h, _ = self._actor_lstm(input)
-            action, action_log_probabilities, entropy, _ = self._actor(h)
+        with torch.no_grad():
+            h, _ = self._actor_lstm(flattened_board)
+            x = self._actor_feedforward(h)
+            normalized_x = (x - x.mean(dim=1, keepdim=True)) / (x.std(dim=1, keepdim=True) + 1e-8)
+            action, action_log_probabilities, entropy, _ = self._actor(torch.cat((normalized_x, observation["interoception"]),1))
 
         return action, action_log_probabilities, entropy
 
     def predict_value(self, observation):
-        input = super()._format_observation(observation["board"], observation["interoception"])
+        flattened_board = torch.flatten(observation["board"], start_dim=1)
 
-        with(torch.no_grad()):
-            h, _ = self._critic_lstm(input)
-            value = self._critic(h)
+        with torch.no_grad():
+            h, _ = self._critic_lstm(flattened_board)
+            x = self._critic_feedforward(h)
+            normalized_x = (x - x.mean(dim=1, keepdim=True)) / (x.std(dim=1, keepdim=True) + 1e-8)
+            value = self._critic(torch.cat((normalized_x, observation["interoception"]),1))
 
         return value
 
@@ -61,14 +68,19 @@ class RecurrentPolicy(AbstractPolicy):
     def train(self, batch):
 
         observation = super()._format_observation(batch["board"], batch["interoception"])
+        flattened_board = torch.flatten(batch["board"], start_dim=1)
 
-        h_actor, _ = self._actor_lstm(observation)
-        _, _, entropies, distribution = self._actor(h_actor)
+        h_actor, _ = self._actor_lstm(flattened_board)
+        x_actor = self._actor_feedforward(h_actor)
+        normalized_x_actor = (x_actor - x_actor.mean(dim=1, keepdim=True)) / (x_actor.std(dim=1, keepdim=True) + 1e-8)
+        _, _, entropies, distribution = self._actor(torch.cat((normalized_x_actor, batch["interoception"]),1))
 
         new_action_log_probs = distribution.log_prob(batch["action"])
 
-        h_critic, _ = self._critic_lstm(observation)
-        values = self._critic.forward(h_critic)
+        h_critic, _ = self._critic_lstm(flattened_board)
+        x_critic = self._critic_feedforward(h_critic)
+        normalized_x_critic = (x_critic - x_critic.mean(dim=1, keepdim=True)) / (x_critic.std(dim=1, keepdim=True) + 1e-8)
+        values = self._critic.forward(torch.cat((normalized_x_critic, batch["interoception"]),1))
 
         critic_loss = super()._get_critic_loss(values, batch["return"])
 

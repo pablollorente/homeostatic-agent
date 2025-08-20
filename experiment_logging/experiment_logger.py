@@ -46,6 +46,9 @@ class ExperimentLogger:
         self._experiment_log["interoception_prediction"] = interoception_prediction
         self._experiment_log["imagination"] = imagination
 
+        if self._experiment_log["interoception_prediction"]:
+            self._training_log["interoception_prediction_loss"] = np.array([])
+
     def log_experiment_end(self):
         self._experiment_log["end_datetime"] = time.strftime("%Y-%M-%d %H:%M:%S", time.localtime())
         self._experiment_log["steps"] = np.sum(self._episode_log["duration"])
@@ -72,9 +75,6 @@ class ExperimentLogger:
 
     def log_training_start(self):
         self._training_log["start_datetime"] = np.append(self._training_log["start_datetime"], time.strftime("%Y-%M-%d %H:%M:%S", time.localtime()))
-
-        if self._experiment_log["interoception_prediction"]:
-            self._training_log["interoception_prediction_loss"] = np.array([])
 
     def log_training_end(self, actor_loss, critic_loss, entropy, interoception_prediction_loss = None):
         self._training_log["actor_loss"] = np.append(self._training_log["actor_loss"], actor_loss)

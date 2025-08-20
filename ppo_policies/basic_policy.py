@@ -15,11 +15,11 @@ class BasicPolicy(AbstractPolicy):
 
         self._training_config = training_config
 
-        self._actor_feedforward = FeedForward(input_dim, 64)
-        self._critic_feedforward = FeedForward(input_dim, 64)
+        self._actor_board_processor = FeedForward(input_dim, 4)
+        self._critic_board_processor = FeedForward(input_dim, 4)
 
-        self._actor = Actor(64, actions_dim)
-        self._critic = Critic(64)
+        self._actor = Actor(6, actions_dim)
+        self._critic = Critic(6)
 
         self._actor_optimizer = optim.Adam(
             self._actor.parameters(),
@@ -32,33 +32,37 @@ class BasicPolicy(AbstractPolicy):
         )
 
     def select_action(self, observation):
-        input = super()._format_observation(observation["board"], observation["interoception"])
+        board, intero = super()._format_observation_new(observation["board"], observation["interoception"])
 
-        with(torch.no_grad()):
-            x = self._actor_feedforward(input)
-            action, action_log_probabilities, entropy, _ = self._actor(x)
+        with torch.no_grad():
+            board_features = self._actor_board_processor(board)
+            # normalized_board_features = (board_features - board_features.min()) / (board_features - board_features.max() + 1e-8)
+            action, action_log_probabilities, entropy, _ = self._actor(torch.cat((board_features, intero), 1))
 
         return action, action_log_probabilities, entropy
 
     def predict_value(self, observation):
-        input = super()._format_observation(observation["board"], observation["interoception"])
+        board, intero = super()._format_observation_new(observation["board"], observation["interoception"])
 
-        with(torch.no_grad()):
-            x = self._critic_feedforward(input)
-            value = self._critic(x)
+        with torch.no_grad():
+            board_features = self._critic_board_processor(board)
+            # normalized_board_features = (board_features - board_features.min()) / (board_features - board_features.max() + 1e-8)
+            value = self._critic(torch.cat((board_features, intero), 1))
 
         return value
 
     def train(self, batch):
 
-        observation = super()._format_observation(batch['board'], batch["interoception"])
+        board, intero = super()._format_observation_new(batch["board"], batch["interoception"])
 
-        actor_features = self._actor_feedforward(observation)
-        _, _, entropies, distribution = self._actor(actor_features)
+        actor_board_features = self._actor_board_processor(board)
+        # normalized_actor_board_features = (actor_board_features - actor_board_features.min()) / (actor_board_features - actor_board_features.max() + 1e-8)
+        _, _, entropies, distribution = self._actor(torch.cat((actor_board_features, intero), 1))
         new_action_log_probs = distribution.log_prob(batch['action'])
 
-        critic_features = self._critic_feedforward(observation)
-        values = self._critic(critic_features)
+        critic_board_features = self._critic_board_processor(board)
+        # normalized_critic_board_features = (critic_board_features - critic_board_features.min()) / (critic_board_features - critic_board_features.max() + 1e-8)
+        values = self._critic(torch.cat((critic_board_features, intero), 1))
 
         critic_loss = super()._get_critic_loss(values, batch["return"])
 
