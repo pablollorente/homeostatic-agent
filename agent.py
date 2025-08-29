@@ -61,9 +61,6 @@ class Agent(HomeostaticAgent):
         # Realizar acción condicionada
         if info and self._conditioned_responses:
             result = self._last_predicted_interoception[0][1] - self.get_interoceptive_state()[1]
-            print(f"DEBUG agent.py -> integrity prediction: {self._last_predicted_interoception[0][1]}")
-            print(f"DEBUG agent.py -> current integrity: {self.get_interoceptive_state()[1]}")
-            print(f"DEBUG agent.py -> prediction difference: {result}")
             if result <= self._homeostasis_config.monster_damage:
                 self._conditioned_action = True
                 action = self._get_conditioned_action(info)

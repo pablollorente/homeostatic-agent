@@ -233,7 +233,6 @@ class App:
 
                 batch_str = f"Batch {batch_num + 1}/{training_config.get_n_batches()}. Actor loss: {actor_loss:.4f}, critic loss: {critic_loss:.4f}, entropy: {entropy:.4f}"
 
-                print(f"DEBUG app.py -> intero arg: {self._args.intero}")
                 if self._args.intero:
                     interoception_prediction_loss = agent.train_interoception_prediction(batch)
                     batch_str += f", interoception prediction loss: {interoception_prediction_loss:.4f}"
@@ -385,11 +384,6 @@ class App:
 
                 # No se añaden al replay buffer los steps en los que se han tomado acciones innatas para no desvirtuar el entrenamiento
                 if not agent.is_last_action_innate() or not agent.is_last_action_conditioned():
-                    print(f"DEBUG app.py -> last action innate: {agent.is_last_action_innate()}")
-                    print(f"DEBUG app.py -> last action intero: {agent.is_last_action_conditioned()}")
-                    print(f"DEBUG app.py -> previous intero: {previous_interoception}")
-                    print(f"DEBUG app.py -> predicted intero: {predicted_interoception}")
-                    print(f"DEBUG app.py -> current intero: {agent.get_interoceptive_state()}")
                     replay_buffer.add(step_data)
 
                 if len(replay_buffer) >= training_config.get_min_buffer_size() and step_count % training_config.get_train_per_steps() == 0 and not done:
