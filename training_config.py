@@ -8,10 +8,10 @@ class TrainingConfig:
             batch_size = 64,
             epochs = 10,
             train_per_steps = 2048,
-            lr=1e-3,
+            lr=5e-4,
             max_grad_norm = 0.5,
             clipping_eps = 0.2,
-            entropy_coef = 0.0,
+            entropy_coef = 0.01,
             gamma = 0.99,
             gae_lambda = 0.95
     ):

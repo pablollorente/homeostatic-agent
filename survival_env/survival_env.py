@@ -181,7 +181,9 @@ class SurvivalEnv(gym.Env):
             'damage': False,
             'food': False,
             'medicine': False,
-            'distance_to_monster': self._get_agent_distance_to_monster()
+            'distance_to_monster': self._get_agent_distance_to_monster(),
+            'monster_position': self._monster.get_position(),
+            'agent_position': self._agent_position
         }
 
         return observation, info
@@ -207,7 +209,9 @@ class SurvivalEnv(gym.Env):
             'damage': damage,
             'food': food,
             'medicine': medicine,
-            'distance_to_monster': self._get_agent_distance_to_monster()
+            'distance_to_monster': self._get_agent_distance_to_monster(),
+            'monster_position': self._monster.get_position(),
+            'agent_position': self._agent_position
         }
 
         return observation, 0, False, False, info

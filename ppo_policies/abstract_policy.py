@@ -2,6 +2,7 @@ import torch
 import torch.nn.functional as F
 
 from abc import ABC, abstractmethod
+from torch.distributions import Categorical
 
 
 class AbstractPolicy(ABC):
@@ -45,4 +46,14 @@ class AbstractPolicy(ABC):
 
     def _get_critic_loss(self, values, returns):
         return F.mse_loss(values.view(-1), returns)
+
+    def get_random_action_pobs_and_entropy(self):
+        actions_logits = torch.randint(0, 100, (1, 5), dtype=torch.float32)
+        actions_probabilities = F.softmax(actions_logits, 1)
+        distribution = Categorical(actions_probabilities)
+        action = distribution.sample()
+        action_log_probabilities = distribution.log_prob(action)
+        entropy = distribution.entropy()
+
+        return action, action_log_probabilities, entropy
 

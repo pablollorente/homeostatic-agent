@@ -13,6 +13,7 @@ from ppo_policies.random_policy import RandomPolicy
 from training_config import TrainingConfig
 from survival_env.env_transformer import EnvTranformer
 from survival_env.reward_calculator import RewardCalculator
+from survival_env.homeostasis_config import HomeostasisConfig
 from ppo_utils import PPOUtils
 from experiment_logging.experiment_logger import ExperimentLogger
 from experiment_logging.experiment_plotter import ExperimentPlotter
@@ -144,6 +145,42 @@ class App:
             default=0.2,
             help="Factor de descuento del GAE"
         )
+        parser.add_argument(
+            "--monster-damage",
+            type=float,
+            default=-0.1,
+            help="Daño a la integridad del agente que realiza el monstruo."
+        )
+        parser.add_argument(
+            "--food-recovery",
+            type=float,
+            default=0.5,
+            help="Recuperación de energía que provoca el consumo de comida."
+        )
+        parser.add_argument(
+            "--medicine-recovery",
+            type=float,
+            default=1,
+            help="Recuperación de integridad que provoca el consumo de medicina."
+        )
+        parser.add_argument(
+            "--basal-cost",
+            type=float,
+            default=-0.001,
+            help="Coste energético de quedarse quieto."
+        )
+        parser.add_argument(
+            "--cost",
+            type=float,
+            default=-0.01,
+            help="Coste energético de cualquier acción de movimiento."
+        )
+        parser.add_argument(
+            "--action-recovery",
+            type=float,
+            default=0.05,
+            help="Recuperación de integridad al realizar un acción de movimiento."
+        )
 
         self._args = parser.parse_args()
 
@@ -196,6 +233,7 @@ class App:
 
                 batch_str = f"Batch {batch_num + 1}/{training_config.get_n_batches()}. Actor loss: {actor_loss:.4f}, critic loss: {critic_loss:.4f}, entropy: {entropy:.4f}"
 
+                print(f"DEBUG app.py -> intero arg: {self._args.intero}")
                 if self._args.intero:
                     interoception_prediction_loss = agent.train_interoception_prediction(batch)
                     batch_str += f", interoception prediction loss: {interoception_prediction_loss:.4f}"
@@ -249,6 +287,15 @@ class App:
             self._args.gae_lambda
         )
 
+        homeostasis_config = HomeostasisConfig(
+            self._args.monster_damage,
+            self._args.food_recovery,
+            self._args.medicine_recovery,
+            self._args.basal_cost,
+            self._args.cost,
+            self._args.action_recovery
+        )
+
         policy = self._get_policy(self._args.policy, training_config)
 
         device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
@@ -257,6 +304,7 @@ class App:
             [1.0, 1.0],
             policy,
             training_config,
+            homeostasis_config,
             self._args.innate,
             self._args.intero,
             self._args.imagination,
@@ -292,6 +340,9 @@ class App:
             tensor_observation, tensor_reward = EnvTranformer.to_tensor(observation, device=device)
 
             while not done:
+                predicted_interoception = agent.predict_interoception(
+                    tensor_observation) if self._args.intero else None
+
                 action, action_log_probabilities, entropy = agent.select_action(tensor_observation, info)
 
                 value = agent.predict_value(tensor_observation)
@@ -303,12 +354,10 @@ class App:
                         "action": action.squeeze(),
                         "action_log_probabilities": action_log_probabilities.squeeze(),
                         "entropy": entropy.squeeze(),
-                        "value": value.squeeze()
+                        "value": value.squeeze(),
+                        "predicted_interoception": predicted_interoception
                     }
                 )
-
-                step_data["interoception_prediction"] = agent.predict_interoception(
-                    tensor_observation) if self._args.intero else None
 
                 observation, _, _, _, info = env.step(action.item())
 
@@ -319,8 +368,6 @@ class App:
                 observation["interoception"] = agent.get_interoceptive_state().copy()
 
                 tensor_observation, _ = EnvTranformer.to_tensor(observation, 0, device)
-
-                predicted_interoception = agent.predict_interoception(tensor_observation) if self._args.intero else None
 
                 reward = reward_calculator.calculate_reward(
                     previous_interoception,
@@ -337,7 +384,12 @@ class App:
                 step_data["next_interoception"] = tensor_observation["interoception"].squeeze()
 
                 # No se añaden al replay buffer los steps en los que se han tomado acciones innatas para no desvirtuar el entrenamiento
-                if not agent.is_last_action_innate():
+                if not agent.is_last_action_innate() or not agent.is_last_action_conditioned():
+                    print(f"DEBUG app.py -> last action innate: {agent.is_last_action_innate()}")
+                    print(f"DEBUG app.py -> last action intero: {agent.is_last_action_conditioned()}")
+                    print(f"DEBUG app.py -> previous intero: {previous_interoception}")
+                    print(f"DEBUG app.py -> predicted intero: {predicted_interoception}")
+                    print(f"DEBUG app.py -> current intero: {agent.get_interoceptive_state()}")
                     replay_buffer.add(step_data)
 
                 if len(replay_buffer) >= training_config.get_min_buffer_size() and step_count % training_config.get_train_per_steps() == 0 and not done:
