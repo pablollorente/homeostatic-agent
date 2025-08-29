@@ -50,7 +50,7 @@ class ExperimentLogger:
             self._training_log["interoception_prediction_loss"] = np.array([])
 
     def log_experiment_end(self):
-        self._experiment_log["end_datetime"] = time.strftime("%Y-%M-%d %H:%M:%S", time.localtime())
+        self._experiment_log["end_datetime"] = time.strftime("%Y-%m-%d %H:%M:%S", time.localtime())
         self._experiment_log["steps"] = np.sum(self._episode_log["duration"])
 
     def log_episode(
@@ -124,7 +124,7 @@ class ExperimentLogger:
 
             log["training_rounds"].append(training_round)
 
-        filename = (f"{time.strftime('%Y%M%d_%H%M%S', self._experiment_log['start_datetime'])}"
+        filename = (f"{time.strftime('%Y%m%d_%H%M%S', self._experiment_log['start_datetime'])}"
                     f"_experiment_{self._experiment_log['policy_type']}"
                     f"_{str(self._experiment_log['episodes'])}"
                     f"_{self._experiment_log['id']}.json"
@@ -134,7 +134,7 @@ class ExperimentLogger:
 
         filepath = os.path.join(path, filename)
 
-        self._experiment_log["start_datetime"] = time.strftime("%Y-%M-%d %H:%M:%S", self._experiment_log["start_datetime"])
+        self._experiment_log["start_datetime"] = time.strftime("%Y-%m-%d %H:%M:%S", self._experiment_log["start_datetime"])
 
         with open(filepath, "w", encoding="utf-8") as file:
             json.dump(log, file, indent=4, ensure_ascii=False)
