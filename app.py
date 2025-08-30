@@ -55,7 +55,13 @@ class App:
             "--episodes",
             type=int,
             default=100,
-            help="Número de episodios."
+            help="Número máximo de episodios a ejecutar."
+        )
+        parser.add_argument(
+            "--steps",
+            type=int,
+            default=10000,
+            help="Número máximo de steps a ejecutar."
         )
         parser.add_argument(
             "--render",
@@ -320,7 +326,7 @@ class App:
         step_count = 0
         training_count = 0
 
-        self._logger.log_experiment_start(self._args.episodes, self._args.policy, training_config, self._args.intero, self._args.imagination)
+        self._logger.log_experiment_start(self._args.policy, training_config, self._args.intero, self._args.imagination)
 
         for episode in range(0, self._args.episodes):
             done = False
@@ -400,6 +406,10 @@ class App:
                 total_distance_to_monster += info["distance_to_monster"]
                 actions_count[action.item()] += 1
 
+                end_experiment = step_count >= self._args.steps
+                if end_experiment:
+                    break
+
             agent.reset()
 
             mean_distance_to_monster = total_distance_to_monster / step_count
@@ -418,6 +428,9 @@ class App:
             print(f"- Distribución de acciones: {actions_count}")
 
             self._logger.log_episode(episode_duration, total_reward, mean_reward, food_count, medicine_count, damage_count, mean_distance_to_monster, actions_count)
+
+            if end_experiment:
+                break
 
         self._logger.log_experiment_end()
 

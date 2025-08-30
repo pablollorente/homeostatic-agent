@@ -38,9 +38,8 @@ class ExperimentLogger:
             "entropy": np.array([]),
         }
 
-    def log_experiment_start(self, episodes, policy_type, training_conf, interoception_prediction, imagination):
+    def log_experiment_start(self, policy_type, training_conf, interoception_prediction, imagination):
         self._experiment_log["start_datetime"] = time.localtime()
-        self._experiment_log["episodes"] = episodes
         self._experiment_log["policy_type"] = policy_type
         self._experiment_log["training_configuration"] = training_conf.__dict__
         self._experiment_log["interoception_prediction"] = interoception_prediction
@@ -51,6 +50,7 @@ class ExperimentLogger:
 
     def log_experiment_end(self):
         self._experiment_log["end_datetime"] = time.strftime("%Y-%m-%d %H:%M:%S", time.localtime())
+        self._experiment_log["episodes"] = len(self._episode_log["duration"])
         self._experiment_log["steps"] = np.sum(self._episode_log["duration"])
 
     def log_episode(
