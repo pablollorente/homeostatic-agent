@@ -357,7 +357,15 @@ class App:
                 predicted_interoception = agent.predict_interoception(
                     tensor_observation) if self._args.intero else None
 
-                imagined_board, imagined_interoception = agent.imagine(agent.get_last_h()) if self._args.imagination else None, None
+                h = agent.get_last_h().detach().clone()
+
+                if self._args.imagination:
+                    imagined_board, imagined_interoception = agent.imagine(h)
+                else:
+                    imagined_board, imagined_interoception = None, None
+
+                tensor_observation["imagined_board"] = imagined_board
+                tensor_observation["imagined_interoception"] = imagined_interoception
 
                 action, action_log_probabilities, entropy = agent.select_action(tensor_observation, info)
 
@@ -370,12 +378,17 @@ class App:
                         "action": action.squeeze(),
                         "action_log_probabilities": action_log_probabilities.squeeze(),
                         "entropy": entropy.squeeze(),
-                        "value": value.squeeze(),
-                        "predicted_interoception": predicted_interoception,
-                        "imagined_board": imagined_board,
-                        "imagined_interoception": imagined_interoception
+                        "value": value.squeeze()
                     }
                 )
+
+                if self._args.intero:
+                    step_data["predicted_interoception"] = predicted_interoception.squeeze()
+
+                if self._args.imagination:
+                    step_data["imagined_board"] = imagined_board.squeeze()
+                    step_data["imagined_interoception"] = imagined_interoception.squeeze()
+                    step_data["hidden_state"] = h.squeeze()
 
                 observation, _, _, _, info = env.step(action.item())
 

@@ -61,12 +61,12 @@ class Agent(HomeostaticAgent):
         self._discriminator = Discriminator().to(self._device)
 
         self._generator_optimizer = optim.Adam(
-            self._interoceptor_predictor.parameters(),
+            self._generator.parameters(),
             lr=self._training_config.get_lr()
         )
 
         self._discriminator_optimizer = optim.Adam(
-            self._interoceptor_predictor.parameters(),
+            self._discriminator.parameters(),
             lr=self._training_config.get_lr()
         )
 

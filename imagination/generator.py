@@ -3,21 +3,12 @@ import torch.nn as nn
 import torch.nn.functional as F
 
 class Generator(nn.Module):
-    """
-    Generador para la GAN de imaginación.
-
-    Entrada: planning memory vector (128 dimensiones)
-    Salida:
-        - imagined_board: imagen RGB 16x16 (tensor [3, 16, 16])
-        - imagined_interoception: vector 2D (tensor [2])
-    """
-
     def __init__(self, noise_dim=128):
         super(Generator, self).__init__()
 
         # Red compartida inicial que procesa el vector de ruido
         self.shared_network = nn.Sequential(
-            nn.Linear(noise_dim, 16),
+            nn.Linear(noise_dim, 32),
             nn.LeakyReLU(0.2),
             nn.Linear(32, 16),
             nn.LeakyReLU(0.2),
