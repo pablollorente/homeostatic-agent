@@ -12,22 +12,22 @@ from networks.critic import Critic
 
 
 class ConvRecurrentPolicy(AbstractPolicy, RecurrentPolicyInterface):
-    def __init__(self, actions_dim, training_config):
-        super(ConvRecurrentPolicy, self).__init__()
+    def __init__(self, actions_dim, training_config, device = "cpu"):
+        super().__init__(device)
 
         self._training_config = training_config
 
-        self._actor_conv = Convolutional()
-        self._critic_conv = Convolutional()
+        self._actor_conv = Convolutional().to(device)
+        self._critic_conv = Convolutional().to(device)
 
-        self._actor_lstm = nn.LSTM(1024, 64, 2)
-        self._critic_lstm = nn.LSTM(1024, 64, 2)
+        self._actor_lstm = nn.LSTM(1024, 64, 2).to(device)
+        self._critic_lstm = nn.LSTM(1024, 64, 2).to(device)
 
-        self._actor_feedforward = FeedForward(64, 4)
-        self._critic_feedforward = FeedForward(64, 4)
+        self._actor_feedforward = FeedForward(64, 4).to(device)
+        self._critic_feedforward = FeedForward(64, 4).to(device)
 
-        self._actor = Actor(6, actions_dim)
-        self._critic = Critic(6)
+        self._actor = Actor(6, actions_dim).to(device)
+        self._critic = Critic(6).to(device)
 
         self._last_actor_h = None
         self._last_critic_h = None

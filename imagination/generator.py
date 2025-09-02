@@ -12,50 +12,48 @@ class Generator(nn.Module):
         - imagined_interoception: vector 2D (tensor [2])
     """
 
-    def __init__(self, planning_memory_dim=128):
+    def __init__(self, noise_dim=128):
         super(Generator, self).__init__()
 
-        self.planning_memory_dim = planning_memory_dim
-
-        # Red compartida inicial que procesa el planning memory
+        # Red compartida inicial que procesa el vector de ruido
         self.shared_network = nn.Sequential(
-            nn.Linear(planning_memory_dim, 256),
+            nn.Linear(noise_dim, 16),
             nn.LeakyReLU(0.2),
-            nn.Linear(256, 512),
+            nn.Linear(32, 16),
             nn.LeakyReLU(0.2),
         )
 
         # Rama para generar la imagen del tablero (16x16x3)
         self.image_branch = nn.Sequential(
-            nn.Linear(512, 1024),
+            nn.Linear(16, 128),
             nn.LeakyReLU(0.2),
-            nn.Linear(1024, 2048),
+            nn.Linear(128, 256),
             nn.LeakyReLU(0.2),
-            nn.Linear(2048, 16 * 16 * 3),  # 768 neuronas para imagen 16x16x3
-            nn.Tanh()  # Valores entre -1 y 1, luego se normalizarán a [0,1]
+            nn.Linear(256, 16 * 16 * 3),
+            nn.Tanh()
         )
 
         # Rama para generar la interocepción (2 dimensiones)
         self.interoception_branch = nn.Sequential(
-            nn.Linear(512, 256),
+            nn.Linear(16, 32),
             nn.LeakyReLU(0.2),
-            nn.Linear(256, 64),
+            nn.Linear(32, 16),
             nn.LeakyReLU(0.2),
-            nn.Linear(64, 2),
-            nn.Sigmoid()  # Valores entre 0 y 1 para la interocepción
+            nn.Linear(16, 2),
+            nn.Sigmoid()
         )
 
-    def forward(self, planning_memory):
+    def forward(self, noise):
         """
         Args:
-            planning_memory: tensor de forma [batch_size, 128]
+            noise: tensor de forma [batch_size, noise_dim]
 
         Returns:
             imagined_board: tensor de forma [batch_size, 3, 16, 16]
             imagined_interoception: tensor de forma [batch_size, 2]
         """
         # Procesamiento compartido
-        shared_features = self.shared_network(planning_memory)
+        shared_features = self.shared_network(noise)
 
         # Generar imagen del tablero
         image_flat = self.image_branch(shared_features)

@@ -19,27 +19,26 @@ class Discriminator(nn.Module):
 
         # Encoder convolucional para la imagen
         self.image_encoder = nn.Sequential(
-            nn.Conv2d(3, 32, kernel_size=3, stride=1, padding=1),  # 16x16x32
+            nn.Conv2d(3, 16, kernel_size=3, stride=1, padding=1),  # 16x16x16
             nn.LeakyReLU(0.2),
-            nn.Conv2d(32, 64, kernel_size=3, stride=2, padding=1),  # 8x8x64
+            nn.Conv2d(16, 32, kernel_size=3, stride=2, padding=1),  # 8x8x32
             nn.LeakyReLU(0.2),
-            nn.Conv2d(64, 128, kernel_size=3, stride=2, padding=1),  # 4x4x128
+            nn.Conv2d(32, 16, kernel_size=3, stride=2, padding=1),  # 4x4x16
             nn.LeakyReLU(0.2),
-            nn.Conv2d(128, 256, kernel_size=4, stride=1, padding=0),  # 1x1x256
+            nn.Flatten(),
+            nn.Linear(256, 32),
             nn.LeakyReLU(0.2),
-            nn.Flatten()  # 256 features
+            nn.Linear(32, 8),
+            nn.LeakyReLU(0.2)
         )
 
         # Red que combina imagen e interocepción
         self.classifier = nn.Sequential(
-            # 256 (imagen) + 2 (interocepción) = 258
-            nn.Linear(256 + 2, 512),
+            # 8 (imagen) + 2 (interocepción)
+            nn.Linear(8 + 2, 16),
             nn.LeakyReLU(0.2),
-            nn.Dropout(0.3),
-            nn.Linear(512, 256),
-            nn.LeakyReLU(0.2),
-            nn.Dropout(0.3),
-            nn.Linear(256, 1),
+            nn.Dropout(0.2),
+            nn.Linear(16, 1),
             nn.Sigmoid()  # Probabilidad entre 0 y 1
         )
 

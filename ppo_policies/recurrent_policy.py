@@ -4,28 +4,35 @@ import torch.nn as nn
 import torch
 
 from ppo_policies.abstract_policy import AbstractPolicy
+from ppo_policies.imagination_policy import ImaginationPolicy
 from networks.feed_forward import FeedForward
 from networks.actor import Actor
 from networks.critic import Critic
 
 
-class RecurrentPolicy(AbstractPolicy):
-    def __init__(self, input_dim, actions_dim, training_config):
-        super(RecurrentPolicy, self).__init__()
+class RecurrentPolicy(AbstractPolicy, ImaginationPolicy):
+    def __init__(self, input_dim, actions_dim, training_config, imagination = False, device = "cpu"):
+        super().__init__(device)
 
         self._training_config = training_config
 
-        self._actor_lstm = nn.LSTM(input_dim, 64, 2)
-        self._critic_lstm = nn.LSTM(input_dim, 64, 2)
+        self._imagination = imagination
 
-        self._actor_feedforward = FeedForward(64, 4)
-        self._critic_feedforward = FeedForward(64, 4)
+        self._actor_board_processor = FeedForward(input_dim, 6).to(device)
+        self._critic_board_processor = FeedForward(input_dim, 6).to(device)
 
-        self._actor = Actor(6, actions_dim)
-        self._critic = Critic(6)
+        if self._imagination:
+            self._actor_imagined_board_processor = FeedForward(input_dim, 6).to(device)
+            self._critic_imagined_board_processor = FeedForward(input_dim, 6).to(device)
 
-        self._last_actor_h = None
-        self._last_critic_h = None
+        self._actor_lstm = nn.LSTM(8, 64, 2).to(device)
+        self._critic_lstm = nn.LSTM(8, 64, 2).to(device)
+
+        self._actor = Actor(64, actions_dim).to(device)
+        self._critic = Critic(64).to(device)
+
+        self._last_actor_h = torch.zeros(128, dtype=torch.float).to(device)
+        self._last_critic_h = torch.zeros(128, dtype=torch.float).to(device)
 
         self._actor_optimizer = optim.Adam(
             self._actor.parameters(),
@@ -41,10 +48,23 @@ class RecurrentPolicy(AbstractPolicy):
         flattened_board = torch.flatten(observation["board"], start_dim=1)
 
         with torch.no_grad():
-            h, _ = self._actor_lstm(flattened_board)
-            x = self._actor_feedforward(h)
-            normalized_x = (x - x.mean(dim=1, keepdim=True)) / (x.std(dim=1, keepdim=True) + 1e-8)
-            action, action_log_probabilities, entropy, _ = self._actor(torch.cat((normalized_x, observation["interoception"]),1))
+            board_features = self._actor_board_processor(flattened_board)
+            normalized_board_features = (board_features - board_features.min()) / (
+                        board_features - board_features.max() + 1e-8)
+            lstm_features = torch.cat((normalized_board_features, observation["interoception"]), 1)
+
+            if self._imagination:
+                flattened_imagined_board = torch.flatten(observation["imagined_board"], start_dim=1)
+                imagined_board_features = self._actor_imagined_board_processor(flattened_imagined_board)
+                normalized_imagined_board_features = (imagined_board_features - imagined_board_features.min()) / (
+                        imagined_board_features - imagined_board_features.max() + 1e-8)
+                lstm_features = torch.cat((normalized_board_features, observation["interoception"], normalized_imagined_board_features, observation["imagined_interoception"]), 1)
+
+            h, _ = self._actor_lstm(lstm_features)
+
+            self._last_actor_h = h.detach().clone()
+
+            action, action_log_probabilities, entropy, _ = self._actor(h)
 
         return action, action_log_probabilities, entropy
 
@@ -52,35 +72,65 @@ class RecurrentPolicy(AbstractPolicy):
         flattened_board = torch.flatten(observation["board"], start_dim=1)
 
         with torch.no_grad():
-            h, _ = self._critic_lstm(flattened_board)
-            x = self._critic_feedforward(h)
-            normalized_x = (x - x.mean(dim=1, keepdim=True)) / (x.std(dim=1, keepdim=True) + 1e-8)
-            value = self._critic(torch.cat((normalized_x, observation["interoception"]),1))
+            board_features = self._critic_board_processor(flattened_board)
+            normalized_board_features = (board_features - board_features.min()) / (
+                        board_features - board_features.max() + 1e-8)
+            lstm_features = torch.cat((normalized_board_features, observation["interoception"]), 1)
+
+            if self._imagination:
+                flattened_imagined_board = torch.flatten(observation["imagined_board"], start_dim=1)
+                imagined_board_features = self._critic_imagined_board_processor(flattened_imagined_board)
+                normalized_imagined_board_features = (imagined_board_features - imagined_board_features.min()) / (
+                        imagined_board_features - imagined_board_features.max() + 1e-8)
+                lstm_features = torch.cat((normalized_board_features, observation["interoception"], normalized_imagined_board_features,
+                                           observation["imagined_interoception"]), 1)
+
+            h, _ = self._critic_lstm(lstm_features)
+
+            self._last_critic_h = h.detach().clone()
+
+            value = self._critic(h)
 
         return value
 
-    def get_last_actor_h(self):
-        return self._last_actor_h
-
-    def get_last_critic_h(self):
-        return self._last_critic_h
+    def get_last_h(self):
+        return torch.concat((self._last_actor_h, self._last_critic_h))
 
     def train(self, batch):
-
-        observation = super()._format_observation(batch["board"], batch["interoception"])
         flattened_board = torch.flatten(batch["board"], start_dim=1)
 
-        h_actor, _ = self._actor_lstm(flattened_board)
-        x_actor = self._actor_feedforward(h_actor)
-        normalized_x_actor = (x_actor - x_actor.mean(dim=1, keepdim=True)) / (x_actor.std(dim=1, keepdim=True) + 1e-8)
-        _, _, entropies, distribution = self._actor(torch.cat((normalized_x_actor, batch["interoception"]),1))
+        actor_board_features = self._actor_board_processor(flattened_board)
+        normalized_actor_board_features = (actor_board_features - actor_board_features.min()) / (
+                    actor_board_features - actor_board_features.max() + 1e-8)
+        actor_lstm_features = torch.cat((normalized_actor_board_features, batch["interoception"]), 1)
+
+        critic_board_features = self._critic_board_processor(flattened_board)
+        normalized_critic_board_features = (critic_board_features - critic_board_features.min()) / (
+                    critic_board_features - critic_board_features.max() + 1e-8)
+        critic_lstm_features = torch.cat((normalized_critic_board_features, batch["interoception"]), 1)
+
+        if self._imagination:
+            flattened_imagined_board = torch.flatten(batch["imagined_board"], start_dim=1)
+
+            actor_imagined_board_features = self._actor_imagined_board_processor(flattened_imagined_board)
+            normalized_actor_imagined_board_features = (actor_imagined_board_features - actor_imagined_board_features.min()) / (
+                    actor_imagined_board_features - actor_imagined_board_features.max() + 1e-8)
+            actor_lstm_features = torch.cat((normalized_actor_board_features, batch["interoception"], normalized_actor_imagined_board_features,
+                                       batch["imagined_interoception"]), 1)
+
+            critic_imagined_board_features = self._critic_imagined_board_processor(flattened_imagined_board)
+            normalized_critic_imagined_board_features = (critic_imagined_board_features - critic_imagined_board_features.min()) / (
+                    critic_imagined_board_features - critic_imagined_board_features.max() + 1e-8)
+            critic_lstm_features = torch.cat((normalized_critic_board_features, batch["interoception"], normalized_critic_imagined_board_features,
+                                       batch["imagined_interoception"]), 1)
+
+        h_actor, _ = self._actor_lstm(actor_lstm_features)
+        _, _, entropies, distribution = self._actor(h_actor)
 
         new_action_log_probs = distribution.log_prob(batch["action"])
 
-        h_critic, _ = self._critic_lstm(flattened_board)
-        x_critic = self._critic_feedforward(h_critic)
-        normalized_x_critic = (x_critic - x_critic.mean(dim=1, keepdim=True)) / (x_critic.std(dim=1, keepdim=True) + 1e-8)
-        values = self._critic.forward(torch.cat((normalized_x_critic, batch["interoception"]),1))
+        h_critic, _ = self._critic_lstm(critic_lstm_features)
+        values = self._critic(h_critic)
 
         critic_loss = super()._get_critic_loss(values, batch["return"])
 

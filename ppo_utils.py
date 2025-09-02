@@ -4,7 +4,7 @@ import torch
 class PPOUtils:
 
     @staticmethod
-    def get_returns_and_advantages(rewards, values, dones, gamma = 0.99, gae_lambda = 0.95):
+    def get_returns_and_advantages(rewards, values, dones, gamma = 0.99, gae_lambda = 0.95, device = "cpu"):
         """
          Calcula los retornos y ventajas estandarizadas para PPO usando GAE.
 
@@ -12,8 +12,8 @@ class PPOUtils:
              returns: Tensor de retornos
              advantages: Tensor de ventajas
          """
-        returns = torch.zeros_like(rewards)
-        advantages = torch.zeros_like(rewards)
+        returns = torch.zeros_like(rewards).to(device)
+        advantages = torch.zeros_like(rewards).to(device)
 
         # Inicializar valores para último paso
         next_return = 0

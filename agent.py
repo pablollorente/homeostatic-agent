@@ -5,7 +5,10 @@ import torch.nn.functional as F
 import torch.optim as optim
 from networks.feed_forward import FeedForward
 from networks.convolutional import Convolutional
+from imagination.generator import Generator
+from imagination.discriminator import Discriminator
 from conditioning.interoception_predictor import InteroceptionPredictor
+from ppo_policies.imagination_policy import ImaginationPolicy
 from survival_env.homeostatic_agent import HomeostaticAgent
 
 
@@ -37,14 +40,32 @@ class Agent(HomeostaticAgent):
         self._conditioned_action = False
         self._last_predicted_interoception = None
 
-        self._set_interoceptor_predictor()
+        if self._conditioned_responses:
+            self._set_interoceptor_predictor()
+
+        if self._imagination:
+            self._set_imagination()
 
     def _set_interoceptor_predictor(self):
-        self._interoception_conv = Convolutional()
-        self._interoception_feedforward = FeedForward(1024, 4)
-        self._interoceptor_predictor = InteroceptionPredictor(6)
+        self._interoception_conv = Convolutional().to(self._device)
+        self._interoception_feedforward = FeedForward(1024, 4).to(self._device)
+        self._interoceptor_predictor = InteroceptionPredictor(6).to(self._device)
 
         self._intero_optimizer = optim.Adam(
+            self._interoceptor_predictor.parameters(),
+            lr=self._training_config.get_lr()
+        )
+
+    def _set_imagination(self):
+        self._generator = Generator().to(self._device)
+        self._discriminator = Discriminator().to(self._device)
+
+        self._generator_optimizer = optim.Adam(
+            self._interoceptor_predictor.parameters(),
+            lr=self._training_config.get_lr()
+        )
+
+        self._discriminator_optimizer = optim.Adam(
             self._interoceptor_predictor.parameters(),
             lr=self._training_config.get_lr()
         )
@@ -54,7 +75,7 @@ class Agent(HomeostaticAgent):
         if info and self._innate_responses:
             if info["damage"]:
                 self._innate_action = True
-                action = torch.tensor(random.randint(1,4), dtype=torch.uint8).unsqueeze(0)
+                action = torch.tensor(random.randint(1,4), dtype=torch.uint8).unsqueeze(0).to(self._device)
                 _, action_log_probs, entropy = self._ppo_policy.get_random_action_pobs_and_entropy()
                 return action, action_log_probs, entropy
 
@@ -109,6 +130,68 @@ class Agent(HomeostaticAgent):
         self._intero_optimizer.step()
 
         return loss.item()
+
+    def imagine(self, previous_h):
+        with torch.no_grad():
+            return self._generator(previous_h)
+
+    def get_last_h(self):
+        if isinstance(self._ppo_policy, ImaginationPolicy):
+            return self._ppo_policy.get_last_h()
+        return None
+
+    def train_imagination(self, batch):
+        """
+        Entrena la GAN (Generator + Discriminator) para el sistema de imaginación.
+
+        Args:
+            batch: Datos del batch
+
+        Returns:
+            tuple: Tupla con las pérdidas del entrenamiento GAN
+        """
+        # Datos reales para el discriminador
+        real_boards = batch['board']  # Boards reales observados
+        real_interoception = batch['interoception']  # Interocepción real
+        h = batch['hidden_state']  # Hidden state de las LSTM (solo para el generador)
+
+        # Generar datos imaginados con el generador
+        generated_boards, generated_interoception = self._generator(h)
+
+        # Entrenar discriminador
+        self._discriminator_optimizer.zero_grad()
+
+        # Predicciones del discriminador para datos reales
+        real_predictions = self._discriminator(real_boards, real_interoception)
+        real_labels = torch.ones_like(real_predictions)  # Etiquetas "real" = 1
+
+        # Predicciones del discriminador para datos generados (sin hidden state, detach para no entrenar generador)
+        fake_predictions = self._discriminator(generated_boards.detach(), generated_interoception.detach())
+        fake_labels = torch.zeros_like(fake_predictions)  # Etiquetas "fake" = 0
+
+        # Pérdida del discriminador (Binary Cross Entropy)
+        discriminator_loss = F.binary_cross_entropy(real_predictions, real_labels) + \
+                             F.binary_cross_entropy(fake_predictions, fake_labels)
+
+        discriminator_loss.backward()
+        self._discriminator_optimizer.step()
+
+        # Entrenar generador
+        self._generator_optimizer.zero_grad()
+
+        # El generador quiere engañar al discriminador
+        # Predicciones del discriminador para datos generados (sin hidden state, sin detach para entrenar generador)
+        generator_fake_predictions = self._discriminator(generated_boards, generated_interoception)
+        generator_labels = torch.ones_like(
+            generator_fake_predictions)  # El generador quiere que sean clasificados como "real"
+
+        # Pérdida del generador
+        generator_loss = F.binary_cross_entropy(generator_fake_predictions, generator_labels)
+
+        generator_loss.backward()
+        self._generator_optimizer.step()
+
+        return generator_loss.item(), discriminator_loss.item()
 
     def is_last_action_innate(self):
         return self._innate_action

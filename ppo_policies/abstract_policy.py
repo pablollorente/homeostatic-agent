@@ -6,6 +6,9 @@ from torch.distributions import Categorical
 
 
 class AbstractPolicy(ABC):
+    def __init__(self, device):
+        self._device = device
+
     @abstractmethod
     def select_action(self, observation):
         pass
@@ -22,16 +25,16 @@ class AbstractPolicy(ABC):
         flattened_board = board.detach().clone()
         flattened_board = torch.flatten(flattened_board, start_dim=1)
 
-        return torch.cat((flattened_board, interoception.detach().clone()),1)
+        return torch.cat((flattened_board, interoception.detach().clone()),1).to(self._device)
 
     def _format_observation_new(self, board, interoception):
         flattened_board = board.detach().clone()
         flattened_board = torch.flatten(flattened_board, start_dim=1)
 
-        return flattened_board, interoception.detach().clone()
+        return flattened_board.to(self._device), interoception.detach().clone().to(self._device)
 
     def _get_ratios(self, new_actions_log_probabilities, old_actions_log_probabilities):
-        return torch.exp(new_actions_log_probabilities - old_actions_log_probabilities.detach())
+        return torch.exp(new_actions_log_probabilities - old_actions_log_probabilities.detach()).to(self._device)
 
     def _get_actor_loss(self, ratios, advantages, eps, entropy_coef, entropies):
         """
@@ -55,5 +58,5 @@ class AbstractPolicy(ABC):
         action_log_probabilities = distribution.log_prob(action)
         entropy = distribution.entropy()
 
-        return action, action_log_probabilities, entropy
+        return action.to(self._device), action_log_probabilities.to(self._device), entropy.to(self._device)
 

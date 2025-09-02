@@ -211,14 +211,15 @@ class App:
             complete_buffer_data["value"],
             complete_buffer_data["done"],
             training_config.get_gamma(),
-            training_config.get_gae_lambda()
+            training_config.get_gae_lambda(),
+            device
         )
 
         complete_buffer_data["return"] = returns
         complete_buffer_data["advantage"] = advantages
 
         training_replay_buffer = TensorDictReplayBuffer(
-            storage=LazyTensorStorage(training_config.get_replay_buffer_size()),
+            storage=LazyTensorStorage(training_config.get_replay_buffer_size(), device=device),
             sampler=SamplerWithoutReplacement(),
             batch_size=training_config.get_batch_size()
         )
@@ -243,6 +244,10 @@ class App:
                     interoception_prediction_loss = agent.train_interoception_prediction(batch)
                     batch_str += f", interoception prediction loss: {interoception_prediction_loss:.4f}"
 
+                if self._args.imagination:
+                    generator_loss, discriminator_loss = agent.train_imagination(batch)
+                    batch_str += f", generator loss: {generator_loss:.4f}, discriminator_loss: {discriminator_loss:.4f}"
+
                 print(batch_str)
 
         if device == "cuda":
@@ -260,20 +265,24 @@ class App:
 
         self._logger.log_training_end(actor_loss.item(), critic_loss.item(), entropy.item(), interoception_prediction_loss)
 
-    def _get_policy(self, policy, training_config):
+    def _get_policy(self, policy, training_config, imagination, device):
         # TODO sacar las dimensiones programáticamente mediante los espacios de la observación del entorno
         policy_switch = {
-            "basic": BasicPolicy(768, 5, training_config),
-            "conv": ConvPolicy(5, training_config),
-            "recurrent": RecurrentPolicy(768, 5, training_config),
-            "convrec": ConvRecurrentPolicy(5, training_config),
-            "random": RandomPolicy(5)
+            "basic": BasicPolicy(768, 5, training_config, device),
+            "conv": ConvPolicy(5, training_config, device),
+            "recurrent": RecurrentPolicy(768, 5, training_config, imagination, device),
+            "convrec": ConvRecurrentPolicy(5, training_config, device),
+            "random": RandomPolicy(5, device)
         }
 
         return policy_switch.get(policy, BasicPolicy(770, 5, training_config))
 
     def run(self):
-        #TODO set the rest of the args.
+        if self._args.imagination and (self._args.policy != "recurrent" and self._args.policy != "convrec"):
+            print("El sistema de imaginación sólo es compatible con políticas recurrentes. Escoge el valor 'recurrent' o 'convrec' para el parámetro 'policy'.")
+            return
+
+        device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
 
         env = SurvivalEnv()
 
@@ -301,9 +310,7 @@ class App:
             self._args.action_recovery
         )
 
-        policy = self._get_policy(self._args.policy, training_config)
-
-        device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
+        policy = self._get_policy(self._args.policy, training_config, self._args.imagination, device)
 
         agent = Agent(
             [1.0, 1.0],
@@ -317,7 +324,7 @@ class App:
         )
 
         replay_buffer = TensorDictReplayBuffer(
-            storage=LazyTensorStorage(training_config.get_replay_buffer_size()),
+            storage=LazyTensorStorage(training_config.get_replay_buffer_size(), device=device),
             sampler=SamplerWithoutReplacement(),
         )
 
@@ -337,6 +344,8 @@ class App:
             damage_count = 0
             total_distance_to_monster = 0
             actions_count = [0,0,0,0,0]
+            innate_count = 0
+            conditioned_count = 0
 
             observation, info = env.reset()
 
@@ -347,6 +356,8 @@ class App:
             while not done:
                 predicted_interoception = agent.predict_interoception(
                     tensor_observation) if self._args.intero else None
+
+                imagined_board, imagined_interoception = agent.imagine(agent.get_last_h()) if self._args.imagination else None, None
 
                 action, action_log_probabilities, entropy = agent.select_action(tensor_observation, info)
 
@@ -360,7 +371,9 @@ class App:
                         "action_log_probabilities": action_log_probabilities.squeeze(),
                         "entropy": entropy.squeeze(),
                         "value": value.squeeze(),
-                        "predicted_interoception": predicted_interoception
+                        "predicted_interoception": predicted_interoception,
+                        "imagined_board": imagined_board,
+                        "imagined_interoception": imagined_interoception
                     }
                 )
 
@@ -405,6 +418,8 @@ class App:
                 damage_count += info["damage"]
                 total_distance_to_monster += info["distance_to_monster"]
                 actions_count[action.item()] += 1
+                innate_count += int(agent.is_last_action_innate())
+                conditioned_count += int(agent.is_last_action_conditioned())
 
                 end_experiment = step_count >= self._args.steps
                 if end_experiment:
@@ -426,6 +441,8 @@ class App:
             print(f"- Mordiscos del monstruo recibidos: {damage_count}")
             print(f"- Distancia media al monstruo: {mean_distance_to_monster:.2f}")
             print(f"- Distribución de acciones: {actions_count}")
+            print(f"- Acciones innatas: {innate_count}")
+            print(f"- Acciones condicionadas: {conditioned_count}")
 
             self._logger.log_episode(episode_duration, total_reward, mean_reward, food_count, medicine_count, damage_count, mean_distance_to_monster, actions_count)
 
