@@ -62,7 +62,9 @@ class ExperimentLogger:
         medicine_count,
         damage_count,
         avg_distance_to_monster,
-        actions_count
+        actions_count,
+        innate_count,
+        conditioned_count
     ):
         self._episode_log["duration"] = np.append(self._episode_log["duration"], duration)
         self._episode_log["cumulative_reward"] = np.append(self._episode_log["cumulative_reward"], cumulative_reward)
@@ -72,6 +74,8 @@ class ExperimentLogger:
         self._episode_log["damage_count"] = np.append(self._episode_log["damage_count"], damage_count)
         self._episode_log["avg_distance_to_monster"] = np.append(self._episode_log["avg_distance_to_monster"], avg_distance_to_monster)
         self._episode_log["actions_count"] = np.append(self._episode_log["actions_count"], [actions_count])
+        self._episode_log["innate_count"] = np.append(self._episode_log["innate_count"], innate_count)
+        self._episode_log["conditioned_count"] = np.append(self._episode_log["conditioned_count"], conditioned_count)
 
     def log_training_start(self):
         self._training_log["start_datetime"] = np.append(self._training_log["start_datetime"], time.strftime("%Y-%M-%d %H:%M:%S", time.localtime()))
@@ -104,7 +108,9 @@ class ExperimentLogger:
                 "medicine_count": self._episode_log["medicine_count"][index],
                 "damage_count": self._episode_log["damage_count"][index],
                 "avg_distance_to_monster": self._episode_log["avg_distance_to_monster"][index],
-                "actions_count": self._episode_log["actions_count"][index]
+                "actions_count": self._episode_log["actions_count"][index],
+                "innate_count": self._episode_log["innate_count"][index],
+                "conditioned_count": self._episode_log["conditioned_count"][index]
             }
 
             log["episodes"].append(episode)
