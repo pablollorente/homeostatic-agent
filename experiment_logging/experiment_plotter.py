@@ -1,4 +1,5 @@
 import matplotlib.pyplot as plt
+import matplotlib.image as img
 import numpy as np
 import os
 from datetime import datetime
@@ -6,9 +7,8 @@ from datetime import datetime
 
 class ExperimentPlotter:
     # TODO crear función para guardar las imágenes generadas por la GAN
-    # TODO modificar todas las funciones de generación de gráficas para pintar la media móvil
-    # TODO función para guardar la gráfica del número de acciones por episodio
-    # TODO función para guardar las gráficas de las pérdidas y la entropía
+    # TODO pintar la media del mismo color que su gráfica y controlar cuando el array está vacío y no se puede calcular
+
     def __init__(self, logger, save_path = "experiments/plots"):
         self._experiment_log, self._episode_log, self._training_log = logger.get_log()
         self._save_path = os.path.join(save_path, self._experiment_log["id"])
@@ -194,6 +194,18 @@ class ExperimentPlotter:
             avg_y.append(np.mean(y[i:i + window]))
 
         return avg_y
+
+    #TODO función para guardar una imagen de ejemplo del generador de la GAN después de cada ciclo de entrenamiento.
+    def save_gan_generated_image(self, rgb_array_image, step):
+        save_name = f"training_round_{len(self._training_log['start_datetime']) + 1}_episode_{len(self._episode_log['duration']) + 1}_step_{step}.png"
+
+        dirpath = os.path.join(self._save_path, "gan")
+
+        os.makedirs(dirpath, exist_ok=True)
+
+        filepath = os.path.join(dirpath, save_name)
+
+        img.imsave(filepath, rgb_array_image)
 
     def plot_all(self):
         self.plot_duration_of_episodes()

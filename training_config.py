@@ -2,7 +2,7 @@ class TrainingConfig:
 
     def __init__(
             self,
-            replay_buffer_size = 2**16,
+            replay_buffer_size = 2**14,
             min_buffer_size = 512,
             n_batches = 32,
             batch_size = 64,

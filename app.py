@@ -2,6 +2,7 @@ import argparse
 import gymnasium as gym
 import torch
 import time
+import os
 
 from agent import Agent
 from survival_env.survival_env import SurvivalEnv
@@ -27,6 +28,8 @@ from torchrl.data.replay_buffers.storages import LazyTensorStorage
 class App:
 
     def __init__(self):
+        os.environ['PYTORCH_CUDA_ALLOC_CONF'] = 'expandable_segments:True'
+
         parser = argparse.ArgumentParser(
             description="Ejecutar el agente homeostático con imaginación en el entorno de supervivencia"
         )
@@ -200,6 +203,7 @@ class App:
 
         print(f"Calculando los retornos y ventajas normalizadas para PPO.")
 
+
         self._logger.log_training_start()
 
         start = time.time()
@@ -252,6 +256,7 @@ class App:
 
         if device == "cuda":
             torch.cuda.synchronize()
+            torch.cuda.empty_cache()
 
         end = time.time()
 
@@ -332,6 +337,7 @@ class App:
 
         step_count = 0
         training_count = 0
+        train = False
 
         self._logger.log_experiment_start(self._args.policy, training_config, self._args.intero, self._args.imagination)
 
@@ -361,6 +367,10 @@ class App:
 
                 if self._args.imagination:
                     imagined_board, imagined_interoception = agent.imagine(h)
+
+                    if train:
+                        rgb_imagined_board = imagined_board.detach().clone().squeeze().permute(1, 2, 0).cpu().numpy()
+                        self._plotter.save_gan_generated_image(rgb_imagined_board, step_count)
                 else:
                     imagined_board, imagined_interoception = None, None
 
@@ -418,7 +428,9 @@ class App:
                 if not agent.is_last_action_innate() or not agent.is_last_action_conditioned():
                     replay_buffer.add(step_data)
 
-                if len(replay_buffer) >= training_config.get_min_buffer_size() and step_count % training_config.get_train_per_steps() == 0 and not done:
+                train = len(replay_buffer) >= training_config.get_min_buffer_size() and step_count % training_config.get_train_per_steps() == 0 and not done
+
+                if train:
                     training_count += 1
                     self._run_training(agent, replay_buffer, training_config, training_count, device)
 
@@ -457,7 +469,18 @@ class App:
             print(f"- Acciones innatas: {innate_count}")
             print(f"- Acciones condicionadas: {conditioned_count}")
 
-            self._logger.log_episode(episode_duration, total_reward, mean_reward, food_count, medicine_count, damage_count, mean_distance_to_monster, actions_count)
+            self._logger.log_episode(
+                episode_duration,
+                total_reward,
+                mean_reward,
+                food_count,
+                medicine_count,
+                damage_count,
+                mean_distance_to_monster,
+                actions_count,
+                innate_count,
+                conditioned_count
+            )
 
             if end_experiment:
                 break
