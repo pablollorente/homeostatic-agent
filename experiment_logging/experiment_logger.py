@@ -27,7 +27,9 @@ class ExperimentLogger:
             "medicine_count": np.array([]),
             "damage_count": np.array([]),
             "avg_distance_to_monster": np.array([]),
-            "actions_count": np.array([])
+            "actions_count": np.array([]),
+            "innate_count": np.array([]),
+            "conditioned_count": np.array([])
         }
 
         self._training_log = {

@@ -28,8 +28,6 @@ from torchrl.data.replay_buffers.storages import LazyTensorStorage
 class App:
 
     def __init__(self):
-        os.environ['PYTORCH_CUDA_ALLOC_CONF'] = 'expandable_segments:True'
-
         parser = argparse.ArgumentParser(
             description="Ejecutar el agente homeostático con imaginación en el entorno de supervivencia"
         )
@@ -338,6 +336,7 @@ class App:
         step_count = 0
         training_count = 0
         train = False
+        imagined_board_fifo = list()
 
         self._logger.log_experiment_start(self._args.policy, training_config, self._args.intero, self._args.imagination)
 
@@ -366,11 +365,18 @@ class App:
                 h = agent.get_last_h().detach().clone()
 
                 if self._args.imagination:
-                    imagined_board, imagined_interoception = agent.imagine(h)
+                    noisy_h = agent.add_noise_to_h(h.squeeze())
+                    imagined_board, imagined_interoception = agent.imagine(torch.unsqueeze(noisy_h, 0))
+
+                    imagined_board_fifo.append(imagined_board)
+
+                    if len(imagined_board_fifo) > 3:
+                        del imagined_board_fifo[0]
 
                     if train:
-                        rgb_imagined_board = imagined_board.detach().clone().squeeze().permute(1, 2, 0).cpu().numpy()
-                        self._plotter.save_gan_generated_image(rgb_imagined_board, step_count)
+                        for idx, item in enumerate(imagined_board_fifo):
+                            rgb_imagined_board = item.detach().clone().squeeze().permute(1, 2, 0).cpu().numpy()
+                            self._plotter.save_gan_generated_image(rgb_imagined_board, step_count - 2 - idx)
                 else:
                     imagined_board, imagined_interoception = None, None
 
@@ -398,7 +404,7 @@ class App:
                 if self._args.imagination:
                     step_data["imagined_board"] = imagined_board.squeeze()
                     step_data["imagined_interoception"] = imagined_interoception.squeeze()
-                    step_data["hidden_state"] = h.squeeze()
+                    step_data["hidden_state"] = noisy_h
 
                 observation, _, _, _, info = env.step(action.item())
 

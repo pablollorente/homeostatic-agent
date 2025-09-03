@@ -3,7 +3,7 @@ import torch.nn as nn
 import torch.nn.functional as F
 
 class Generator(nn.Module):
-    def __init__(self, noise_dim=128):
+    def __init__(self, noise_dim=256):
         super(Generator, self).__init__()
 
         # Red compartida inicial que procesa el vector de ruido

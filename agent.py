@@ -131,6 +131,11 @@ class Agent(HomeostaticAgent):
 
         return loss.item()
 
+    def add_noise_to_h(self, h, noise_scale = 0.1):
+        noisy_h = h + torch.randn_like(h, device=self._device) * noise_scale
+
+        return torch.cat((h, noisy_h))
+
     def imagine(self, previous_h):
         with torch.no_grad():
             return self._generator(previous_h)
