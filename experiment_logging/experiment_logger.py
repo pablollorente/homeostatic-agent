@@ -80,9 +80,9 @@ class ExperimentLogger:
         self._episode_log["conditioned_count"] = np.append(self._episode_log["conditioned_count"], conditioned_count)
 
     def log_training_start(self):
-        self._training_log["start_datetime"] = np.append(self._training_log["start_datetime"], time.strftime("%Y-%M-%d %H:%M:%S", time.localtime()))
+        self._training_log["start_datetime"] = np.append(self._training_log["start_datetime"], time.strftime("%Y-%m-%d %H:%M:%S", time.localtime()))
 
-    def log_training_end(self, actor_loss, critic_loss, entropy, interoception_prediction_loss = None):
+    def log_training_end(self, actor_loss, critic_loss, entropy, interoception_prediction_loss = None, generator_loss = None, discriminaator_loss = None):
         self._training_log["actor_loss"] = np.append(self._training_log["actor_loss"], actor_loss)
         self._training_log["critic_loss"] = np.append(self._training_log["critic_loss"], critic_loss)
         self._training_log["entropy"] = np.append(self._training_log["entropy"], entropy)
@@ -90,7 +90,11 @@ class ExperimentLogger:
         if self._experiment_log["interoception_prediction"]:
             self._training_log["interoception_prediction_loss"] = np.append(self._training_log["interoception_prediction_loss"], interoception_prediction_loss)
 
-        self._training_log["end_datetime"] = np.append(self._training_log["end_datetime"], time.strftime("%Y-%M-%d %H:%M:%S", time.localtime()))
+        if self._experiment_log["imagination"]:
+            self._training_log["generator_loss"] = np.append(self._training_log["generator_loss"], generator_loss)
+            self._training_log["discriminaator_loss"] = np.append(self._training_log["discriminaator_loss"], generator_loss)
+
+        self._training_log["end_datetime"] = np.append(self._training_log["end_datetime"], time.strftime("%Y-%m-%d %H:%M:%S", time.localtime()))
 
     def save_to_json_file(self, path = "experiments/logs"):
         log = {
@@ -129,6 +133,10 @@ class ExperimentLogger:
 
             if self._experiment_log["interoception_prediction"]:
                 training_round["interoception_prediction_loss"] = self._training_log["interoception_prediction_loss"][index]
+
+            if self._experiment_log["imagination"]:
+                training_round["generator_loss"] = self._training_log["generator_loss"][index]
+                training_round["discriminaator_loss"] = self._training_log["discriminaator_loss"][index]
 
             log["training_rounds"].append(training_round)
 

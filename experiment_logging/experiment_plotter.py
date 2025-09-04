@@ -6,7 +6,6 @@ from datetime import datetime
 
 
 class ExperimentPlotter:
-    # TODO crear función para guardar las imágenes generadas por la GAN
     # TODO pintar la media del mismo color que su gráfica y controlar cuando el array está vacío y no se puede calcular
 
     def __init__(self, logger, save_path = "experiments/plots"):
@@ -22,7 +21,7 @@ class ExperimentPlotter:
         window_size = int(np.trunc(np.sqrt(self._experiment_log["episodes"])))
 
         plt.figure(figsize=self._figsize)
-        plt.plot(self._episode_log["duration"], alpha=0.4, linewidth=2)
+        plt.plot(self._episode_log["duration"], color="b", alpha=0.4, linewidth=2)
         plt.plot(self._get_moving_avg(self._episode_log["duration"], window_size), color="b", alpha=0.8, linewidth=2)
         plt.xlabel('Episodio')
         plt.ylabel('Duración (steps)')
@@ -85,8 +84,8 @@ class ExperimentPlotter:
         window_size = int(np.trunc(np.sqrt(self._experiment_log["episodes"])))
 
         plt.figure(figsize=self._figsize)
-        plt.plot(self._episode_log["cumulative_reward"], alpha=0.4, linewidth=2, markersize=4)
-        plt.plot(self._get_moving_avg(self._episode_log["cumulative_reward"], window_size), alpha=0.8, linewidth=2)
+        plt.plot(self._episode_log["cumulative_reward"], color="b", alpha=0.4, linewidth=2, markersize=4)
+        plt.plot(self._get_moving_avg(self._episode_log["cumulative_reward"], window_size), color="b", alpha=0.8, linewidth=2)
         plt.xlabel('Episodio')
         plt.ylabel('Recompensa acumulada')
         plt.title('Recompensa acumulada por episodio')
@@ -105,8 +104,8 @@ class ExperimentPlotter:
         window_size = int(np.trunc(np.sqrt(self._experiment_log["episodes"])))
 
         plt.figure(figsize=self._figsize)
-        plt.plot(self._episode_log["avg_reward"], alpha=0.4, linewidth=2, markersize=4)
-        plt.plot(self._get_moving_avg(self._episode_log["avg_reward"], window_size), alpha=0.8, linewidth=2)
+        plt.plot(self._episode_log["avg_reward"], alpha=0.4, color="b", linewidth=2, markersize=4)
+        plt.plot(self._get_moving_avg(self._episode_log["avg_reward"], window_size), alpha=0.8, color="b", linewidth=2)
         plt.xlabel('Episodio')
         plt.ylabel('Recompensa media')
         plt.title('Recompensa media por episodio')
@@ -127,8 +126,8 @@ class ExperimentPlotter:
         window_size = int(np.trunc(np.sqrt(training_rounds)))
 
         plt.figure(figsize=self._figsize)
-        plt.plot(self._training_log["actor_loss"], alpha=0.4, linewidth=2, markersize=4)
-        plt.plot(self._get_moving_avg(self._training_log["actor_loss"], window_size), alpha=0.8, linewidth=2)
+        plt.plot(self._training_log["actor_loss"], alpha=0.4, color="b", linewidth=2, markersize=4)
+        plt.plot(self._get_moving_avg(self._training_log["actor_loss"], window_size), alpha=0.8, color="b", linewidth=2)
         plt.xlabel('Entrenamiento')
         plt.ylabel('Pérdida del actor')
         plt.title('Pérdida del actor por entrenamiento')
@@ -149,8 +148,8 @@ class ExperimentPlotter:
         window_size = int(np.trunc(np.sqrt(training_rounds)))
 
         plt.figure(figsize=self._figsize)
-        plt.plot(self._training_log["critic_loss"], alpha=0.4, linewidth=2, markersize=4)
-        plt.plot(self._get_moving_avg(self._training_log["critic_loss"], window_size), alpha=0.8, linewidth=2)
+        plt.plot(self._training_log["critic_loss"], alpha=0.4, color="b", linewidth=2, markersize=4)
+        plt.plot(self._get_moving_avg(self._training_log["critic_loss"], window_size), alpha=0.8, color="b", linewidth=2)
         plt.xlabel('Entrenamiento')
         plt.ylabel('Pérdida del crítico')
         plt.title('Pérdida del crítico por entrenamiento')
@@ -165,14 +164,82 @@ class ExperimentPlotter:
 
         return filepath
 
+    def plot_interoception_loss(self):
+        training_rounds = len(self._training_log["critic_loss"])
+
+        window_size = int(np.trunc(np.sqrt(training_rounds)))
+
+        plt.figure(figsize=self._figsize)
+        plt.plot(self._training_log["intero_loss"], alpha=0.4, color="b", linewidth=2, markersize=4)
+        plt.plot(self._get_moving_avg(self._training_log["intero_loss"], window_size), alpha=0.8, color="b", linewidth=2)
+        plt.xlabel('Entrenamiento')
+        plt.ylabel('Pérdida')
+        plt.title('Pérdida del predictor de interocepción')
+        plt.grid(True, alpha=0.3)
+
+        timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
+        save_name = f"experiment_{self._experiment_log['id']}_intero_loss_{timestamp}.png"
+
+        filepath = os.path.join(self._save_path, save_name)
+        plt.savefig(filepath, dpi=self._dpi, bbox_inches="tight")
+        plt.close()
+
+        return filepath
+
+    def plot_gan_loss(self):
+        training_rounds = len(self._training_log["critic_loss"])
+
+        window_size = int(np.trunc(np.sqrt(training_rounds)))
+
+        plt.figure(figsize=self._figsize)
+        plt.plot(self._training_log["generator_loss"], alpha=0.4, color="b", linewidth=2, markersize=4)
+        plt.plot(self._get_moving_avg(self._training_log["generator_loss"], window_size), alpha=0.8, color="b", linewidth=2)
+        plt.plot(self._training_log["discriminator_loss"], alpha=0.4, color="b", linewidth=2, markersize=4)
+        plt.plot(self._get_moving_avg(self._training_log["discriminator_loss"], window_size), alpha=0.8, color="b", linewidth=2)
+        plt.xlabel('Entrenamiento')
+        plt.ylabel('Pérdida')
+        plt.title('Pérdida del generador y del discriminador')
+        plt.grid(True, alpha=0.3)
+
+        timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
+        save_name = f"experiment_{self._experiment_log['id']}_intero_loss_{timestamp}.png"
+
+        filepath = os.path.join(self._save_path, save_name)
+        plt.savefig(filepath, dpi=self._dpi, bbox_inches="tight")
+        plt.close()
+
+        return filepath
+
+    def plot_interoception_loss(self):
+        training_rounds = len(self._training_log["critic_loss"])
+
+        window_size = int(np.trunc(np.sqrt(training_rounds)))
+
+        plt.figure(figsize=self._figsize)
+        plt.plot(self._training_log["intero_loss"], alpha=0.4, color="b", linewidth=2, markersize=4)
+        plt.plot(self._get_moving_avg(self._training_log["intero_loss"], window_size), alpha=0.8, color="b", linewidth=2)
+        plt.xlabel('Entrenamiento')
+        plt.ylabel('Pérdida')
+        plt.title('Pérdida del predictor de interocepción')
+        plt.grid(True, alpha=0.3)
+
+        timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
+        save_name = f"experiment_{self._experiment_log['id']}_intero_loss_{timestamp}.png"
+
+        filepath = os.path.join(self._save_path, save_name)
+        plt.savefig(filepath, dpi=self._dpi, bbox_inches="tight")
+        plt.close()
+
+        return filepath
+
     def plot_entropy(self):
         training_rounds = len(self._training_log["entropy"])
 
         window_size = int(np.trunc(np.sqrt(training_rounds)))
 
         plt.figure(figsize=self._figsize)
-        plt.plot(self._training_log["entropy"], alpha=0.4, linewidth=2, markersize=4)
-        plt.plot(self._get_moving_avg(self._training_log["entropy"], window_size), alpha=0.8, linewidth=2)
+        plt.plot(self._training_log["entropy"], alpha=0.4, color="b", linewidth=2, markersize=4)
+        plt.plot(self._get_moving_avg(self._training_log["entropy"], window_size), alpha=0.8, color="b", linewidth=2)
         plt.xlabel('Entrenamiento')
         plt.ylabel('Entropía del actor')
         plt.title('Entropía del actor por entrenamiento')
@@ -195,7 +262,6 @@ class ExperimentPlotter:
 
         return avg_y
 
-    #TODO función para guardar una imagen de ejemplo del generador de la GAN después de cada ciclo de entrenamiento.
     def save_gan_generated_image(self, rgb_array_image, step):
         save_name = f"training_round_{len(self._training_log['start_datetime']) + 1}_episode_{len(self._episode_log['duration']) + 1}_step_{step}.png"
 

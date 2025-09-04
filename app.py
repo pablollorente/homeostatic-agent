@@ -229,6 +229,8 @@ class App:
         training_replay_buffer.extend(complete_buffer_data)
 
         interoception_prediction_loss = None
+        generator_loss = None
+        discriminator_loss = None
 
         for epoch in range(training_config.get_epochs()):
             print("-----------------------------------------------")
@@ -266,7 +268,14 @@ class App:
 
         print(f"Duración: {training_time}")
 
-        self._logger.log_training_end(actor_loss.item(), critic_loss.item(), entropy.item(), interoception_prediction_loss)
+        self._logger.log_training_end(
+            actor_loss.item(),
+            critic_loss.item(),
+            entropy.item(),
+            interoception_prediction_loss,
+            generator_loss,
+            discriminator_loss
+        )
 
     def _get_policy(self, policy, training_config, imagination, device):
         # TODO sacar las dimensiones programáticamente mediante los espacios de la observación del entorno
