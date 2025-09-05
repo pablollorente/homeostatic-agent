@@ -83,7 +83,7 @@ class App:
         parser.add_argument(
             "--buffer-size",
             type=int,
-            default=2**16,
+            default=2**14,
             help="Tamaño máximo del buffer de memoria de pasos temporales."
         )
         parser.add_argument(
