@@ -283,7 +283,7 @@ class App:
             "basic": BasicPolicy(768, 5, training_config, device),
             "conv": ConvPolicy(5, training_config, device),
             "recurrent": RecurrentPolicy(768, 5, training_config, imagination, device),
-            "convrec": ConvRecurrentPolicy(5, training_config, device),
+            "convrec": ConvRecurrentPolicy(5, training_config, imagination, device),
             "random": RandomPolicy(5, device)
         }
 
