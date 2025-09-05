@@ -40,15 +40,20 @@ class ExperimentLogger:
             "entropy": np.array([]),
         }
 
-    def log_experiment_start(self, policy_type, training_conf, interoception_prediction, imagination):
+    def log_experiment_start(self, policy_type, training_conf, homeostasis_conf, interoception_prediction, imagination):
         self._experiment_log["start_datetime"] = time.localtime()
         self._experiment_log["policy_type"] = policy_type
         self._experiment_log["training_configuration"] = training_conf.__dict__
+        self._experiment_log["homeostais_configuration"] = homeostasis_conf.__dict__
         self._experiment_log["interoception_prediction"] = interoception_prediction
         self._experiment_log["imagination"] = imagination
 
         if self._experiment_log["interoception_prediction"]:
             self._training_log["interoception_prediction_loss"] = np.array([])
+
+        if self._experiment_log["imagination"]:
+            self._training_log["generator_loss"] = np.array([])
+            self._training_log["discriminator_loss"] = np.array([])
 
     def log_experiment_end(self):
         self._experiment_log["end_datetime"] = time.strftime("%Y-%m-%d %H:%M:%S", time.localtime())
@@ -82,7 +87,7 @@ class ExperimentLogger:
     def log_training_start(self):
         self._training_log["start_datetime"] = np.append(self._training_log["start_datetime"], time.strftime("%Y-%m-%d %H:%M:%S", time.localtime()))
 
-    def log_training_end(self, actor_loss, critic_loss, entropy, interoception_prediction_loss = None, generator_loss = None, discriminaator_loss = None):
+    def log_training_end(self, actor_loss, critic_loss, entropy, interoception_prediction_loss = None, generator_loss = None, discriminator_loss = None):
         self._training_log["actor_loss"] = np.append(self._training_log["actor_loss"], actor_loss)
         self._training_log["critic_loss"] = np.append(self._training_log["critic_loss"], critic_loss)
         self._training_log["entropy"] = np.append(self._training_log["entropy"], entropy)
@@ -92,7 +97,7 @@ class ExperimentLogger:
 
         if self._experiment_log["imagination"]:
             self._training_log["generator_loss"] = np.append(self._training_log["generator_loss"], generator_loss)
-            self._training_log["discriminaator_loss"] = np.append(self._training_log["discriminaator_loss"], generator_loss)
+            self._training_log["discriminator_loss"] = np.append(self._training_log["discriminator_loss"], discriminator_loss)
 
         self._training_log["end_datetime"] = np.append(self._training_log["end_datetime"], time.strftime("%Y-%m-%d %H:%M:%S", time.localtime()))
 
@@ -136,7 +141,7 @@ class ExperimentLogger:
 
             if self._experiment_log["imagination"]:
                 training_round["generator_loss"] = self._training_log["generator_loss"][index]
-                training_round["discriminaator_loss"] = self._training_log["discriminaator_loss"][index]
+                training_round["discriminator_loss"] = self._training_log["discriminator_loss"][index]
 
             log["training_rounds"].append(training_round)
 

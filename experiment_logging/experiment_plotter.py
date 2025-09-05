@@ -170,8 +170,8 @@ class ExperimentPlotter:
         window_size = int(np.trunc(np.sqrt(training_rounds)))
 
         plt.figure(figsize=self._figsize)
-        plt.plot(self._training_log["intero_loss"], alpha=0.4, color="b", linewidth=2, markersize=4)
-        plt.plot(self._get_moving_avg(self._training_log["intero_loss"], window_size), alpha=0.8, color="b", linewidth=2)
+        plt.plot(self._training_log["interoception_prediction_loss"], alpha=0.4, color="b", linewidth=2, markersize=4)
+        plt.plot(self._get_moving_avg(self._training_log["interoception_prediction_loss"], window_size), alpha=0.8, color="b", linewidth=2)
         plt.xlabel('Entrenamiento')
         plt.ylabel('Pérdida')
         plt.title('Pérdida del predictor de interocepción')
@@ -202,29 +202,7 @@ class ExperimentPlotter:
         plt.grid(True, alpha=0.3)
 
         timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
-        save_name = f"experiment_{self._experiment_log['id']}_intero_loss_{timestamp}.png"
-
-        filepath = os.path.join(self._save_path, save_name)
-        plt.savefig(filepath, dpi=self._dpi, bbox_inches="tight")
-        plt.close()
-
-        return filepath
-
-    def plot_interoception_loss(self):
-        training_rounds = len(self._training_log["critic_loss"])
-
-        window_size = int(np.trunc(np.sqrt(training_rounds)))
-
-        plt.figure(figsize=self._figsize)
-        plt.plot(self._training_log["intero_loss"], alpha=0.4, color="b", linewidth=2, markersize=4)
-        plt.plot(self._get_moving_avg(self._training_log["intero_loss"], window_size), alpha=0.8, color="b", linewidth=2)
-        plt.xlabel('Entrenamiento')
-        plt.ylabel('Pérdida')
-        plt.title('Pérdida del predictor de interocepción')
-        plt.grid(True, alpha=0.3)
-
-        timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
-        save_name = f"experiment_{self._experiment_log['id']}_intero_loss_{timestamp}.png"
+        save_name = f"experiment_{self._experiment_log['id']}_gan_loss_{timestamp}.png"
 
         filepath = os.path.join(self._save_path, save_name)
         plt.savefig(filepath, dpi=self._dpi, bbox_inches="tight")
@@ -282,3 +260,9 @@ class ExperimentPlotter:
         self.plot_actor_loss()
         self.plot_critic_loss()
         self.plot_entropy()
+
+        if self._experiment_log["interoception_prediction"]:
+            self.plot_interoception_loss()
+
+        if self._experiment_log["imagination"]:
+            self.plot_gan_loss()

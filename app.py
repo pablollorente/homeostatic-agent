@@ -348,7 +348,7 @@ class App:
 
         imagined_board_fifo = list()
 
-        self._logger.log_experiment_start(self._args.policy, training_config, self._args.intero, self._args.imagination)
+        self._logger.log_experiment_start(self._args.policy, training_config, homeostasis_config, self._args.intero, self._args.imagination)
 
         for episode in range(0, self._args.episodes):
             done = False
