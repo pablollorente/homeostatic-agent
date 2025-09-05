@@ -46,6 +46,8 @@ class Agent(HomeostaticAgent):
         if self._imagination:
             self._set_imagination()
 
+        self._intero_training_rounds = 0
+
     def _set_interoceptor_predictor(self):
         self._interoception_conv = Convolutional().to(self._device)
         self._interoception_feedforward = FeedForward(1024, 4).to(self._device)
@@ -80,9 +82,9 @@ class Agent(HomeostaticAgent):
                 return action, action_log_probs, entropy
 
         # Realizar acción condicionada
-        if info and self._conditioned_responses:
+        if info and self._conditioned_responses and self._intero_training_rounds > 0:
             result = self._last_predicted_interoception[0][1] - self.get_interoceptive_state()[1]
-            if result <= self._homeostasis_config.monster_damage:
+            if result <= (self._homeostasis_config.monster_damage + self._homeostasis_config.action_integrity_recovery) * 0.2:
                 self._conditioned_action = True
                 action = self._get_conditioned_action(info)
                 _, action_log_probs, entropy = self._ppo_policy.get_random_action_pobs_and_entropy()
@@ -128,6 +130,8 @@ class Agent(HomeostaticAgent):
         self._intero_optimizer.zero_grad()
         loss.backward()
         self._intero_optimizer.step()
+
+        self._intero_training_rounds += 1
 
         return loss.item()
 
@@ -276,5 +280,7 @@ class Agent(HomeostaticAgent):
                 return torch.tensor([1], dtype=torch.int8)
             # Están en cualquier otra fila
             return torch.randint(1, 2, (1, 1), dtype=torch.int8)
+
+    # TODO funciones para guardar y recuperar el modelo
 
 

@@ -155,7 +155,7 @@ class App:
         parser.add_argument(
             "--monster-damage",
             type=float,
-            default=-0.1,
+            default=-0.2,
             help="Daño a la integridad del agente que realiza el monstruo."
         )
         parser.add_argument(
@@ -185,7 +185,7 @@ class App:
         parser.add_argument(
             "--action-recovery",
             type=float,
-            default=0.05,
+            default=0.01,
             help="Recuperación de integridad al realizar un acción de movimiento."
         )
 
@@ -345,6 +345,7 @@ class App:
         step_count = 0
         training_count = 0
         train = False
+
         imagined_board_fifo = list()
 
         self._logger.log_experiment_start(self._args.policy, training_config, self._args.intero, self._args.imagination)
@@ -371,9 +372,8 @@ class App:
                 predicted_interoception = agent.predict_interoception(
                     tensor_observation) if self._args.intero else None
 
-                h = agent.get_last_h().detach().clone()
-
                 if self._args.imagination:
+                    h = agent.get_last_h().detach().clone()
                     noisy_h = agent.add_noise_to_h(h.squeeze())
                     imagined_board, imagined_interoception = agent.imagine(torch.unsqueeze(noisy_h, 0))
 
@@ -409,6 +409,7 @@ class App:
 
                 if self._args.intero:
                     step_data["predicted_interoception"] = predicted_interoception.squeeze()
+                    predicted_interoception = predicted_interoception.detach().squeeze().cpu().numpy()
 
                 if self._args.imagination:
                     step_data["imagined_board"] = imagined_board.squeeze()

@@ -72,7 +72,7 @@ class RewardCalculator:
         # Calcular reducción de distancia real
         real_reduction = self._get_distance_reduction(previous_interoception, current_interoception)
 
-        if predicted_interoception != None:
+        if predicted_interoception is not None:
             # Calcular reducción de distancia imaginada
             predicted_reduction = self._get_distance_reduction(previous_interoception, predicted_interoception)
 
