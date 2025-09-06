@@ -59,14 +59,12 @@ class ConvRecurrentPolicy(AbstractPolicy, ImaginationPolicy):
         with torch.no_grad():
             x_conv = self._actor_board_processor(observation["board"])
             x = self._actor_feedforward(x_conv)
-            normalized_x = (x - x.mean(dim=1, keepdim=True)) / (x.std(dim=1, keepdim=True) + 1e-8)
-            lstm_features = torch.cat((normalized_x, observation["interoception"]), dim=1)
+            lstm_features = torch.cat((x, observation["interoception"]), dim=1)
 
             if self._imagination:
                 x_conv_imagination = self._actor_imagined_board_processor(observation["imagined_board"])
                 x_imagination = self._actor_imagination_feedforward(x_conv_imagination)
-                normalized_x_imagination = (x_imagination - x_imagination.mean(dim=1, keepdim=True)) / (x_imagination.std(dim=1, keepdim=True) + 1e-8)
-                lstm_features = torch.cat((lstm_features, normalized_x_imagination, observation["imagined_interoception"]), dim=1)
+                lstm_features = torch.cat((lstm_features, x_imagination, observation["imagined_interoception"]), dim=1)
 
             h, _ = self._actor_lstm(lstm_features)
             action, action_log_probabilities, entropy, _ = self._actor(h)
@@ -79,14 +77,12 @@ class ConvRecurrentPolicy(AbstractPolicy, ImaginationPolicy):
         with torch.no_grad():
             x_conv = self._critic_board_processor(observation["board"])
             x = self._critic_feedforward(x_conv)
-            normalized_x = (x - x.mean(dim=1, keepdim=True)) / (x.std(dim=1, keepdim=True) + 1e-8)
-            lstm_features = torch.cat((normalized_x, observation["interoception"]), 1)
+            lstm_features = torch.cat((x, observation["interoception"]), 1)
 
             if self._imagination:
                 x_conv_imagination = self._critic_imagined_board_processor(observation["imagined_board"])
                 x_imagination = self._critic_imagination_feedforward(x_conv_imagination)
-                normalized_x_imagination = (x_imagination - x_imagination.mean(dim=1, keepdim=True)) / (x_imagination.std(dim=1, keepdim=True) + 1e-8)
-                lstm_features = torch.cat((lstm_features, normalized_x_imagination, observation["imagined_interoception"]), dim=1)
+                lstm_features = torch.cat((lstm_features, x_imagination, observation["imagined_interoception"]), dim=1)
 
             h, _ = self._critic_lstm(lstm_features)
 
@@ -102,15 +98,12 @@ class ConvRecurrentPolicy(AbstractPolicy, ImaginationPolicy):
     def train(self, batch):
         actor_feedforward_features = self._actor_board_processor(batch["board"])
         x_actor = self._actor_feedforward(actor_feedforward_features)
-        normalized_x_actor = (x_actor - x_actor.mean(dim=1, keepdim=True)) / (x_actor.std(dim=1, keepdim=True) + 1e-8)
-        actor_lstm_features = torch.cat((normalized_x_actor, batch["interoception"]), dim=1)
+        actor_lstm_features = torch.cat((x_actor, batch["interoception"]), dim=1)
 
         if self._imagination:
             actor_imagination_feedforward_features = self._actor_imagined_board_processor(batch["imagined_board"])
             x_imagination_actor = self._actor_imagination_feedforward(actor_imagination_feedforward_features)
-            normalized_x_imagination_actor = (x_imagination_actor - x_imagination_actor.mean(dim=1, keepdim=True)) / (
-                        x_imagination_actor.std(dim=1, keepdim=True) + 1e-8)
-            actor_lstm_features = torch.cat((actor_lstm_features, normalized_x_imagination_actor, batch["imagined_interoception"]), dim=1)
+            actor_lstm_features = torch.cat((actor_lstm_features, x_imagination_actor, batch["imagined_interoception"]), dim=1)
 
         h_actor, _ = self._actor_lstm(actor_lstm_features)
         _, _, entropies, distribution = self._actor(h_actor)
@@ -119,15 +112,12 @@ class ConvRecurrentPolicy(AbstractPolicy, ImaginationPolicy):
 
         critic_feedforward_features = self._critic_board_processor(batch["board"])
         x_critic = self._critic_feedforward(critic_feedforward_features)
-        normalized_x_critic = (x_critic - x_critic.mean(dim=1, keepdim=True)) / (x_critic.std(dim=1, keepdim=True) + 1e-8)
-        critic_lstm_features = torch.cat((normalized_x_critic, batch["interoception"]), dim=1)
+        critic_lstm_features = torch.cat((x_critic, batch["interoception"]), dim=1)
 
         if self._imagination:
             critic_imagination_feedforward_features = self._critic_imagined_board_processor(batch["imagined_board"])
             x_imagination_critic = self._critic_imagination_feedforward(critic_imagination_feedforward_features)
-            normalized_x_imagination_critic = (x_imagination_critic - x_imagination_critic.mean(dim=1, keepdim=True)) / (
-                        x_imagination_critic.std(dim=1, keepdim=True) + 1e-8)
-            critic_lstm_features = torch.cat((critic_lstm_features, normalized_x_imagination_critic, batch["imagined_interoception"]), dim=1)
+            critic_lstm_features = torch.cat((critic_lstm_features, x_imagination_critic, batch["imagined_interoception"]), dim=1)
 
         h_critic, _ = self._critic_lstm(critic_lstm_features)
         values = self._critic(h_critic)

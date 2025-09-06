@@ -53,16 +53,14 @@ class RecurrentPolicy(AbstractPolicy, ImaginationPolicy):
 
         with torch.no_grad():
             board_features = self._actor_board_processor(flattened_board)
-            normalized_board_features = (board_features - board_features.min()) / (
-                        board_features - board_features.max() + 1e-8)
-            lstm_features = torch.cat((normalized_board_features, observation["interoception"]), 1)
+            #normalized_board_features = (board_features - board_features.min()) / (board_features - board_features.max() + 1e-8)
+            lstm_features = torch.cat((board_features, observation["interoception"]), 1)
 
             if self._imagination:
                 flattened_imagined_board = torch.flatten(observation["imagined_board"], start_dim=1)
                 imagined_board_features = self._actor_imagined_board_processor(flattened_imagined_board)
-                normalized_imagined_board_features = (imagined_board_features - imagined_board_features.min()) / (
-                        imagined_board_features - imagined_board_features.max() + 1e-8)
-                lstm_features = torch.cat((normalized_board_features, observation["interoception"], normalized_imagined_board_features, observation["imagined_interoception"]), 1)
+                #normalized_imagined_board_features = (imagined_board_features - imagined_board_features.min()) / (imagined_board_features - imagined_board_features.max() + 1e-8)
+                lstm_features = torch.cat((lstm_features, imagined_board_features, observation["imagined_interoception"]), 1)
 
             h, _ = self._actor_lstm(lstm_features)
 
@@ -77,16 +75,14 @@ class RecurrentPolicy(AbstractPolicy, ImaginationPolicy):
 
         with torch.no_grad():
             board_features = self._critic_board_processor(flattened_board)
-            normalized_board_features = (board_features - board_features.min()) / (
-                        board_features - board_features.max() + 1e-8)
-            lstm_features = torch.cat((normalized_board_features, observation["interoception"]), 1)
+            #normalized_board_features = (board_features - board_features.min()) / (board_features - board_features.max() + 1e-8)
+            lstm_features = torch.cat((board_features, observation["interoception"]), 1)
 
             if self._imagination:
                 flattened_imagined_board = torch.flatten(observation["imagined_board"], start_dim=1)
                 imagined_board_features = self._critic_imagined_board_processor(flattened_imagined_board)
-                normalized_imagined_board_features = (imagined_board_features - imagined_board_features.min()) / (
-                        imagined_board_features - imagined_board_features.max() + 1e-8)
-                lstm_features = torch.cat((normalized_board_features, observation["interoception"], normalized_imagined_board_features,
+                #normalized_imagined_board_features = (imagined_board_features - imagined_board_features.min()) / (imagined_board_features - imagined_board_features.max() + 1e-8)
+                lstm_features = torch.cat((lstm_features, imagined_board_features,
                                            observation["imagined_interoception"]), 1)
 
             h, _ = self._critic_lstm(lstm_features)
@@ -113,11 +109,11 @@ class RecurrentPolicy(AbstractPolicy, ImaginationPolicy):
             flattened_imagined_board = torch.flatten(batch["imagined_board"], start_dim=1)
 
             actor_imagined_board_features = self._actor_imagined_board_processor(flattened_imagined_board)
-            actor_lstm_features = torch.cat((actor_board_features, batch["interoception"], actor_imagined_board_features,
+            actor_lstm_features = torch.cat((actor_lstm_features, actor_imagined_board_features,
                                        batch["imagined_interoception"]), dim=1)
 
             critic_imagined_board_features = self._critic_imagined_board_processor(flattened_imagined_board)
-            critic_lstm_features = torch.cat((critic_board_features, batch["interoception"], critic_imagined_board_features,
+            critic_lstm_features = torch.cat((critic_lstm_features, critic_imagined_board_features,
                                        batch["imagined_interoception"]), dim=1)
 
         h_actor, _ = self._actor_lstm(actor_lstm_features)
