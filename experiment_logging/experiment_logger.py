@@ -11,6 +11,7 @@ class ExperimentLogger:
             "id": str(uuid.uuid4()),
             "start_datetime": None,
             "end_datetime": None,
+            "innate_responses": None,
             "interoception_prediction": False,
             "imagination": False,
             "policy_type": None,
@@ -40,11 +41,12 @@ class ExperimentLogger:
             "entropy": np.array([]),
         }
 
-    def log_experiment_start(self, policy_type, training_conf, homeostasis_conf, interoception_prediction, imagination):
+    def log_experiment_start(self, policy_type, training_conf, homeostasis_conf, innate_responses, interoception_prediction, imagination):
         self._experiment_log["start_datetime"] = time.localtime()
         self._experiment_log["policy_type"] = policy_type
         self._experiment_log["training_configuration"] = training_conf.__dict__
         self._experiment_log["homeostais_configuration"] = homeostasis_conf.__dict__
+        self._experiment_log["innate_responses"] = innate_responses
         self._experiment_log["interoception_prediction"] = interoception_prediction
         self._experiment_log["imagination"] = imagination
 
