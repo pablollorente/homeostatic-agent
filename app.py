@@ -468,7 +468,7 @@ class App:
 
             agent.reset()
 
-            mean_distance_to_monster = total_distance_to_monster / step_count
+            mean_distance_to_monster = total_distance_to_monster / episode_duration
             mean_reward = total_reward / episode_duration
 
             print("################################")
