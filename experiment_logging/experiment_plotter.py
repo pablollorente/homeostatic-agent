@@ -38,6 +38,8 @@ class ExperimentPlotter:
         return filepath
 
     def plot_avg_distance_to_monster(self):
+        window_size = int(np.trunc(np.sqrt(self._experiment_log["episodes"])))
+
         plt.figure(figsize=self._figsize)
         plt.plot(self._episode_log["avg_distance_to_monster"], color="b", alpha=0.4, linewidth=2)
         plt.plot(self._get_moving_avg(self._episode_log["avg_distance_to_monster"], window_size), color="b", alpha=0.8, linewidth=2)
