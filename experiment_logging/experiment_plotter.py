@@ -39,7 +39,8 @@ class ExperimentPlotter:
 
     def plot_avg_distance_to_monster(self):
         plt.figure(figsize=self._figsize)
-        plt.plot(self._episode_log["avg_distance_to_monster"], linewidth=2)
+        plt.plot(self._episode_log["avg_distance_to_monster"], color="b", alpha=0.4, linewidth=2)
+        plt.plot(self._get_moving_avg(self._episode_log["avg_distance_to_monster"], window_size), color="b", alpha=0.8, linewidth=2)
         plt.xlabel('Episodio')
         plt.ylabel('Distancia (Manhattan)')
         plt.title('Distancia media al monstruo por episodio')
