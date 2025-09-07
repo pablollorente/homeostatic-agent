@@ -25,13 +25,16 @@ class ConvPolicy(AbstractPolicy):
         self._actor = Actor(6, actions_dim).to(device)
         self._critic = Critic(6).to(device)
 
+        self._actor_params = list(self._actor_conv.parameters()) + list(self._actor_conv.parameters()) + list(self._actor_conv.parameters())
+        self._critic_params = list(self._critic_conv.parameters()) + list(self._actor_conv.parameters()) + list(self._actor_conv.parameters())
+
         self._actor_optimizer = optim.Adam(
-            self._actor.parameters(),
+            self._actor_params,
             lr=self._training_config.get_lr()
         )
 
         self._critic_optimizer = optim.Adam(
-            self._critic.parameters(),
+            self._critic_params,
             lr=self._training_config.get_lr()
         )
 
@@ -84,12 +87,12 @@ class ConvPolicy(AbstractPolicy):
 
         self._actor_optimizer.zero_grad()
         actor_loss.backward()
-        nn.utils.clip_grad_norm_(self._actor.parameters(), self._training_config.get_max_grad_norm())
+        nn.utils.clip_grad_norm_(self._actor_params, self._training_config.get_max_grad_norm())
         self._actor_optimizer.step()
 
         self._critic_optimizer.zero_grad()
         critic_loss.backward()
-        nn.utils.clip_grad_norm_(self._critic.parameters(), self._training_config.get_max_grad_norm())
+        nn.utils.clip_grad_norm_(self._critic_params, self._training_config.get_max_grad_norm())
         self._critic_optimizer.step()
 
         return actor_loss, critic_loss, entropies.mean()
