@@ -17,11 +17,11 @@ class BasicPolicy(AbstractPolicy):
 
         self._training_config = training_config
 
-        self._actor_board_processor = FeedForward(input_dim, 4).to(device)
-        self._critic_board_processor = FeedForward(input_dim, 4).to(device)
+        self._actor_board_processor = FeedForward(input_dim, 6).to(device)
+        self._critic_board_processor = FeedForward(input_dim, 6).to(device)
 
-        self._actor = Actor(6, actions_dim).to(device)
-        self._critic = Critic(6).to(device)
+        self._actor = Actor(8, actions_dim).to(device)
+        self._critic = Critic(8).to(device)
 
         self._actor_params = list(self._actor_board_processor.parameters()) + list (self._actor.parameters())
         self._critic_params = list(self._critic_board_processor.parameters()) + list(self._critic.parameters())
@@ -41,7 +41,8 @@ class BasicPolicy(AbstractPolicy):
 
         with torch.no_grad():
             board_features = self._actor_board_processor(board)
-            action, action_log_probabilities, entropy, _ = self._actor(torch.cat((board_features, intero), 1))
+            normalized_board_features = (board_features - board_features.min(dim=1, keepdim=True)[0]) / (board_features.max(dim=1, keepdim=True)[0] - board_features.min(dim=1, keepdim=True)[0] + 1e-8)
+            action, action_log_probabilities, entropy, _ = self._actor(torch.cat((normalized_board_features, intero), 1))
 
         return action, action_log_probabilities, entropy
 
@@ -50,7 +51,8 @@ class BasicPolicy(AbstractPolicy):
 
         with torch.no_grad():
             board_features = self._critic_board_processor(board)
-            value = self._critic(torch.cat((board_features, intero), 1))
+            normalized_board_features = (board_features - board_features.min(dim=1, keepdim=True)[0]) / (board_features.max(dim=1, keepdim=True)[0] - board_features.min(dim=1, keepdim=True)[0] + 1e-8)
+            value = self._critic(torch.cat((normalized_board_features, intero), 1))
 
         return value
 
@@ -59,11 +61,13 @@ class BasicPolicy(AbstractPolicy):
         board, intero = super()._format_observation_new(batch["board"], batch["interoception"])
 
         actor_board_features = self._actor_board_processor(board)
-        _, _, entropies, distribution = self._actor(torch.cat((actor_board_features, intero), 1))
+        normalized_actor_board_features = (actor_board_features - actor_board_features.min(dim=1, keepdim=True)[0]) / (actor_board_features.max(dim=1, keepdim=True)[0] - actor_board_features.min(dim=1, keepdim=True)[0] + 1e-8)
+        _, _, entropies, distribution = self._actor(torch.cat((normalized_actor_board_features, intero), 1))
         new_action_log_probs = distribution.log_prob(batch['action'])
 
         critic_board_features = self._critic_board_processor(board)
-        values = self._critic(torch.cat((critic_board_features, intero), 1))
+        normalized_critic_board_features = (critic_board_features - critic_board_features.min(dim=1, keepdim=True)[0]) / (critic_board_features.max(dim=1, keepdim=True)[0] - critic_board_features.min(dim=1, keepdim=True)[0] + 1e-8)
+        values = self._critic(torch.cat((normalized_critic_board_features, intero), 1))
 
         critic_loss = super()._get_critic_loss(values, batch["return"])
 

@@ -50,8 +50,8 @@ class Agent(HomeostaticAgent):
 
     def _set_interoceptor_predictor(self):
         self._interoception_conv = Convolutional().to(self._device)
-        self._interoception_feedforward = FeedForward(1024, 4).to(self._device)
-        self._interoceptor_predictor = InteroceptionPredictor(6).to(self._device)
+        self._interoception_feedforward = FeedForward(1024, 6).to(self._device)
+        self._interoceptor_predictor = InteroceptionPredictor(8).to(self._device)
 
         self._intero_optimizer = optim.Adam(
             self._interoceptor_predictor.parameters(),
@@ -282,5 +282,3 @@ class Agent(HomeostaticAgent):
             return torch.randint(1, 2, (1, 1), dtype=torch.int8)
 
     # TODO funciones para guardar y recuperar el modelo
-
-
